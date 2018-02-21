@@ -6,7 +6,7 @@ It is used to perform terraform action on ibm cloud provider using REST API
 
 -	[Terraform](https://www.terraform.io/downloads.html) 0.9.3+
 -	[Go](https://golang.org/doc/install) 1.8 (to build the provider plugin)
--   [IBM Cloud Provider] (https://github.com/IBM-Cloud/terraform-provider-ibm/)
+-   [IBM Cloud Provider](https://github.com/IBM-Cloud/terraform-provider-ibm/)
 
 
 ## Files
