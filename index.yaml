@@ -1,0 +1,13 @@
+apiVersion: v1
+entries:
+  terrform_provider_service:
+  - apiVersion: v1
+    appVersion: "1.0"
+    created: 2018-02-21T17:03:42.848038551+05:30
+    description: A Helm chart for Kubernetes
+    digest: e4719be1220f679a00c275901251a868e9dc5baaa2969aa4d0807ac0f6fb983c
+    name: terrform_provider_service
+    urls:
+    - https://ibmterraform.github.io/terraform-provider-ibm-api/terrform_provider_service-0.1.0.tgz
+    version: 0.1.0
+generated: 2018-02-21T17:03:42.845864495+05:30
