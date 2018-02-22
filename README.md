@@ -24,11 +24,11 @@ It is used to perform terraform action on ibm cloud provider using REST API
 ## How to run the terraform-ibmcloud-provider-api as a container
         
         cd /go/src/github.com
-        git clone git@github.ibm.com:sakshiag/terraform-ibm-provider-api.git
-        cd terraform-ibm-provider-api
-        docker build -t terraform-ibm-provider-api .
+        git clone git@github.ibm.com:IBMTerraform/terraform-provider-ibm-api/.git
+        cd terraform-provider-ibm-api/
+        docker build -t terraform-provider-ibm-api .
         docker images
-        docker run -d -p 9080:9080 terraform-ibm-provider-api
+        docker run -d -p 9080:9080 terraform-provider-ibm-api
         
 *  Create the configuration <br />
      
