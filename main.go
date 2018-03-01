@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	//"github.com/terrform-schematics-demo/terraform-provider-ibm-api/utils"
 	"github.com/terraform-provider-ibm-api/utils"
 	mgo "gopkg.in/mgo.v2"
 )
@@ -39,9 +38,9 @@ func main() {
 
 	r.HandleFunc("/configuration/{repo_name}/destroy", utils.DestroyHandler(session)).Methods("POST")
 
-	r.HandleFunc("/configuration/{repo_name}/{action}/{actionID}/log", utils.LogHandler)
+	r.HandleFunc("/configuration/{repo_name}/{action}/{actionID}/log", utils.LogHandler).Methods("GET")
 
-	r.HandleFunc("/configuration/{repo_name}/{action}/{actionID}/status", utils.StatusHandler)
+	r.HandleFunc("/configuration/{repo_name}/{action}/{actionID}/status", utils.StatusHandler(session)).Methods("GET")
 
 	r.HandleFunc("/configuration/{repo_name}/{action}/{log_file}", utils.ViewLogHandler)
 

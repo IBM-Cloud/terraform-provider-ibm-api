@@ -76,6 +76,10 @@ var stateDir = currentDir + "/state"
 
 func init() {
 
+	if currentDir == "" {
+		panic("MOUNT_DIR is not set. Please set MOUNT_DIR to continue")
+	}
+
 	if _, err := os.Stat(logDir); os.IsNotExist(err) {
 		os.MkdirAll(logDir, os.ModePerm)
 	}
@@ -150,7 +154,7 @@ func ConfHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(output)
 }
 
-//ConfDeleteHandler handles request to kickoff git clone of the repo.
+//ConfDeleteHandler handles request to delete the cloned repo.
 func ConfDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "DELETE" {
 		http.Error(w, "Invalid request method.", 405)
@@ -187,8 +191,6 @@ func PlanHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 		b := make([]byte, 10)
 		rand.Read(b)
 		randomID := fmt.Sprintf("%x", b)
-		commandDone := make(chan StatusResponse)
-		currentOps[randomID] = commandDone
 
 		outURL := "http://" + r.Host + "/" + r.URL.Path + "/" + randomID + ".out"
 		errURL := "http://" + r.Host + "/" + r.URL.Path + "/" + randomID + ".err"
@@ -202,14 +204,12 @@ func PlanHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				statusResponse.Error = err.Error()
 				statusResponse.Status = "Failed"
-				commandDone <- statusResponse
 
 				// Update the status in the db in case it is failed
 				err = UpdateMongodb(s, randomID, statusResponse.Status)
 				return
 			}
 			statusResponse.Status = "Completed"
-			commandDone <- statusResponse
 
 			// Update the status in the db in case it is completed
 			err = UpdateMongodb(s, randomID, statusResponse.Status)
@@ -237,7 +237,7 @@ func PlanHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-//ApplyHandler handles request to run terraform plan.
+//ApplyHandler handles request to run terraform apply.
 func ApplyHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		session := s.Copy()
@@ -257,8 +257,7 @@ func ApplyHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 		b := make([]byte, 10)
 		rand.Read(b)
 		randomID := fmt.Sprintf("%x", b)
-		commandDone := make(chan StatusResponse)
-		currentOps[randomID] = commandDone
+
 		outURL := "http://" + r.Host + "/" + r.URL.Path + "/" + randomID + ".out"
 		errURL := "http://" + r.Host + "/" + r.URL.Path + "/" + randomID + ".err"
 		ResultToSlack(outURL, errURL, "apply", randomID, "In-Progress", webhook)
@@ -269,14 +268,14 @@ func ApplyHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				statusResponse.Error = err.Error()
 				statusResponse.Status = "Failed"
-				commandDone <- statusResponse
+
 				err = UpdateMongodb(s, randomID, statusResponse.Status)
 				return
 			}
 			statusResponse.Status = "Completed"
 			ResultToSlack(outURL, errURL, "apply", randomID, statusResponse.Status, webhook)
 			err = UpdateMongodb(s, randomID, statusResponse.Status)
-			commandDone <- statusResponse
+
 		}()
 		w.WriteHeader(202)
 		actionResponse.Action = "apply"
@@ -296,7 +295,7 @@ func ApplyHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-//DestroyHandler handles request to run terraform plan.
+//DestroyHandler handles request to run terraform destroy.
 func DestroyHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -316,8 +315,7 @@ func DestroyHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request)
 		b := make([]byte, 10)
 		rand.Read(b)
 		randomID := fmt.Sprintf("%x", b)
-		commandDone := make(chan StatusResponse)
-		currentOps[randomID] = commandDone
+
 		outURL := "http://" + r.Host + "/" + r.URL.Path + "/" + randomID + ".out"
 		errURL := "http://" + r.Host + "/" + r.URL.Path + "/" + randomID + ".err"
 		ResultToSlack(outURL, errURL, "destroy", randomID, "In-Progress", webhook)
@@ -326,14 +324,13 @@ func DestroyHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request)
 			if err != nil {
 				statusResponse.Error = err.Error()
 				statusResponse.Status = "Failed"
-				commandDone <- statusResponse
+
 				err = UpdateMongodb(s, randomID, statusResponse.Status)
 				return
 			}
 			statusResponse.Status = "Completed"
 			ResultToSlack(outURL, errURL, "destroy", randomID, "Completed", webhook)
 			err = UpdateMongodb(s, randomID, statusResponse.Status)
-			commandDone <- statusResponse
 
 		}()
 
@@ -378,8 +375,7 @@ func ShowHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 		b := make([]byte, 10)
 		rand.Read(b)
 		randomID := fmt.Sprintf("%x", b)
-		commandDone := make(chan StatusResponse)
-		currentOps[randomID] = commandDone
+
 		outURL := "http://" + r.Host + "/" + r.URL.Path + "/" + randomID + ".out"
 		errURL := "http://" + r.Host + "/" + r.URL.Path + "/" + randomID + ".err"
 		ResultToSlack(outURL, errURL, "show", randomID, "In-Progress", webhook)
@@ -388,7 +384,7 @@ func ShowHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				statusResponse.Error = err.Error()
 				statusResponse.Status = "Failed"
-				commandDone <- statusResponse
+
 				err = UpdateMongodb(s, randomID, statusResponse.Status)
 				return
 			}
@@ -398,7 +394,6 @@ func ShowHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 			statusResponse.Status = "Completed"
 			ResultToSlack(outURL, errURL, "show", randomID, statusResponse.Status, webhook)
 			err = UpdateMongodb(s, randomID, statusResponse.Status)
-			commandDone <- statusResponse
 
 		}()
 		w.WriteHeader(202)
@@ -421,12 +416,9 @@ func ShowHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-//LogHandler handles request to run terraform plan.
+//LogHandler handles request to get action logs.
 func LogHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		http.Error(w, "Invalid request method.", 405)
-		return
-	}
+
 	var response ActionDetails
 
 	vars := mux.Vars(r)
@@ -455,41 +447,34 @@ func LogHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-//StatusHandler handles request to run terraform plan.
-func StatusHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		http.Error(w, "Invalid request method.", 405)
-		return
+//StatusHandler handles request to get the action status.
+func StatusHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session := s.Copy()
+		defer session.Close()
+
+		var response StatusResponse
+		var actionResponse ActionResponse
+
+		vars := mux.Vars(r)
+		repoName := vars["repo_name"]
+		action := vars["action"]
+		actionID := vars["actionID"]
+
+		log.Println("Url Param 'repo name' is: " + repoName)
+		log.Println("Url Param 'action' is: " + action)
+		log.Println("Url Param 'actionID' is: " + actionID)
+
+		c := session.DB("action").C("actionDetails")
+		err := c.Find(bson.M{"actionid": actionID}).One(&actionResponse)
+		response.Status = actionResponse.Status
+		output, err := json.MarshalIndent(response, "", "  ")
+		if err != nil {
+			return
+		}
+		w.Header().Set("content-type", "application/json")
+		w.Write(output)
 	}
-	var response StatusResponse
-
-	vars := mux.Vars(r)
-	repoName := vars["repo_name"]
-	action := vars["action"]
-	actionID := vars["actionID"]
-
-	log.Println("Url Param 'repo name' is: " + repoName)
-	log.Println("Url Param 'action' is: " + action)
-	log.Println("Url Param 'actionID' is: " + actionID)
-
-	select {
-	case value := <-currentOps[actionID]:
-
-		response = value
-
-		go func() {
-			currentOps[actionID] <- value
-		}()
-	default:
-		response.Status = "In-Progress"
-	}
-	output, err := json.MarshalIndent(response, "", "  ")
-	if err != nil {
-		return
-	}
-	w.Header().Set("content-type", "application/json")
-	w.Write(output)
-
 }
 
 //ViewLogHandler handles request to retrieve the log file
@@ -513,28 +498,7 @@ func ViewLogHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(body)
 }
 
-//StateHandler handles request to retrieve the state file
-/*func StateHandler(w http.ResponseWriter, r *http.Request) {
-
-	if r.Method != "GET" {
-		http.Error(w, "Invalid request method.", 405)
-		return
-	}
-	vars := mux.Vars(r)
-	repoName := vars["repo_name"]
-
-	body, err := ioutil.ReadFile(path.Join(stateDir, repoName+".tfstate"))
-	if err != nil {
-		w.WriteHeader(404)
-		log.Println(err)
-		w.Write([]byte(fmt.Sprintf("There is no state file for this request")))
-		return
-	}
-	w.WriteHeader(200)
-	w.Write(body)
-}*/
-
-//GetActionDetailsHandler handles request to run terraform plan.
+//GetActionDetailsHandler handles request to get all the details of particular action.
 func GetActionDetailsHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		session := s.Copy()
@@ -559,33 +523,5 @@ func GetActionDetailsHandler(s *mgo.Session) func(w http.ResponseWriter, r *http
 		w.Header().Set("content-type", "application/json")
 		w.Write(output)
 
-	}
-}
-
-//UpdateMongodb updates the status of the action.
-func UpdateMongodb(s *mgo.Session, actionID string, status string) error {
-	session := s.Copy()
-	defer session.Close()
-	c := session.DB("action").C("actionDetails")
-	err := c.Update(bson.M{"actionid": actionID}, bson.M{"$set": bson.M{"status": status}})
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-//UpdateMongodb updates the status of the action.
-func insertMongodb(s *mgo.Session, actionResponse ActionResponse) {
-	session := s.Copy()
-	defer session.Close()
-	c := session.DB("action").C("actionDetails")
-	err := c.Insert(actionResponse)
-	if err != nil {
-		if mgo.IsDup(err) {
-			return
-		}
-		log.Println("Failed insert action details : ", err)
-		return
 	}
 }
