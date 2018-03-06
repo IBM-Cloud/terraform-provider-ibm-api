@@ -11,7 +11,7 @@ import (
 var stdouterr []byte
 
 //It will clone the git repo which contains the configuration file.
-func cloneRepo(msg Message) ([]byte, string, error) {
+func cloneRepo(msg ConfigRequest) ([]byte, string, error) {
 	gitURL := msg.GitURL
 	urlPath, err := url.Parse(msg.GitURL)
 	if err != nil {
@@ -44,7 +44,7 @@ func cloneRepo(msg Message) ([]byte, string, error) {
 }
 
 //It will create a vars file
-func createFile(msg Message, path string) {
+func createFile(msg ConfigRequest, path string) {
 	// detect if file exists
 
 	_, err := os.Stat(path)
@@ -78,7 +78,7 @@ func removeRepo(path, repoName string) error {
 	return err
 }
 
-func writeFile(path string, msg Message) {
+func writeFile(path string, msg ConfigRequest) {
 	// open file using READ & WRITE permission
 	var file, err = os.OpenFile(path, os.O_RDWR, 0644)
 	if err != nil {
