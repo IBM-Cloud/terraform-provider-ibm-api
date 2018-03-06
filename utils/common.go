@@ -28,8 +28,8 @@ func UpdateMongodb(s *mgo.Session, actionID string, status string) error {
 	return nil
 }
 
-//insertMongodb updates the status of the action.
-func insertMongodb(s *mgo.Session, actionResponse ActionResponse) {
+//InsertMongodb updates the status of the action.
+func InsertMongodb(s *mgo.Session, actionResponse ActionResponse) {
 	session := s.Copy()
 	defer session.Close()
 	c := session.DB("action").C("actionDetails")

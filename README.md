@@ -19,7 +19,8 @@ It is used to perform terraform action on ibm cloud provider using REST API
 ## Steps to use the project
 
 *  Start the server
-       go run main.go
+       export MOUNT_DIR=<dir to clone the repo>
+       go run main.go docs.go
 
 ## How to run the terraform-ibmcloud-provider-api as a container
         
@@ -28,7 +29,9 @@ It is used to perform terraform action on ibm cloud provider using REST API
         cd terraform-provider-ibm-api/
         docker build -t terraform-provider-ibm-api .
         docker images
-        docker run -d -p 9080:9080 terraform-provider-ibm-api
+        export API_IMAGE=terraform-provider-ibm-api:latest
+        export MOUNT_DIR=<dir where repo will be cloned>
+        docker-compose up --build -d
         
 *  Create the configuration <br />
      
