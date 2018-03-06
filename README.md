@@ -19,6 +19,7 @@ It is used to perform terraform action on ibm cloud provider using REST API
 ## Steps to use the project
 
 *  Start the server
+
        export MOUNT_DIR=<dir to clone the repo>
        go run main.go docs.go
 
