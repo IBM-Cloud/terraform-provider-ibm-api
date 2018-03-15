@@ -5,14 +5,14 @@ Added the helm chart for the Micro service that exposes REST API for IBM Cloud t
 
 |Variable Name|Description|Default Value|
 |-------------|-----------|-------------|
-|image.repository|Image for api service||
+|image.repository|docker image for api service||
 |image.pullPolicy|Image Pull Policy|IfNotPresent|
-|pvc.enabled| whether to create pvc pr not|true|
+|pvc.enabled| Set to true to create pvc (used to store the configuration repo and logs and state file.)|true|
 |pvc.storageClass|pvc storage class|ibmc-file-bronze|
-|pvc.mountPath|pvc mount path|/tmp|
-|pvc.name|Name of pvc|tfstate-data|
+|pvc.mountPath|path where the configuration repo will get cloned and used to store state file and logs|/tmp|
+|pvc.name|Name of pvc storage|tfstate-data|
 |ingress.path|Ingress Path|/|
-|ingress.host|ingress hostname||
+|ingress.host|ingress hostname value can be obtained from IBM Cloud cluster domain||
 
 ## How to use this helm chart
 
