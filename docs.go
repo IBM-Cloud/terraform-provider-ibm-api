@@ -516,15 +516,15 @@ var apiDescriptionsJson = map[string]string{"v1": `{
             ]
         },
         {
-            "path": "/v1/configuration/{repo_name}/{action_name}",
-            "description": "Get all the information for a particular action",
+            "path": "/v1/configuration/{repo_name}/import",
+            "description": "Merge TF state file and resources",
             "operations": [
                 {
-                    "httpMethod": "GET",
-                    "nickname": "GetActionDetailsHandler",
+                    "httpMethod": "POST",
+                    "nickname": "TerraformerImportHandler",
                     "type": "github.com.terrform-schematics-demo.terraform-provider-ibm-api.utils.ActionResponse",
                     "items": {},
-                    "summary": "Get all the information for a particular action",
+                    "summary": "Merge TF state file and resources.",
                     "parameters": [
                         {
                             "paramType": "path",
@@ -539,9 +539,133 @@ var apiDescriptionsJson = map[string]string{"v1": `{
                             "maximum": 0
                         },
                         {
+                            "paramType": "query",
+                            "name": "service",
+                            "description": "service",
+                            "dataType": "string",
+                            "type": "string",
+                            "format": "",
+                            "allowMultiple": false,
+                            "required": true,
+                            "minimum": 0,
+                            "maximum": 0
+                        }
+                    ],
+                    "responseMessages": [
+                        {
+                            "code": 200,
+                            "message": "",
+                            "responseType": "object",
+                            "responseModel": "github.com.terrform-schematics-demo.terraform-provider-ibm-api.utils.ActionResponse"
+                        },
+                        {
+                            "code": 404,
+                            "message": "",
+                            "responseType": "object",
+                            "responseModel": "string"
+                        },
+                        {
+                            "code": 500,
+                            "message": "",
+                            "responseType": "object",
+                            "responseModel": "string"
+                        }
+                    ],
+                    "produces": [
+                        "application/json"
+                    ]
+                }
+            ]
+        },
+        {
+            "path": "/v1/configuration/{repo_name}/statefile",
+            "description": "Get state file from backup folder",
+            "operations": [
+                {
+                    "httpMethod": "GET",
+                    "nickname": "TerraformerImportHandler",
+                    "type": "github.com.terrform-schematics-demo.terraform-provider-ibm-api.utils.ActionResponse",
+                    "items": {},
+                    "summary": "Download the terraform state file.",
+                    "parameters": [
+                        {
                             "paramType": "path",
-                            "name": "action_name",
-                            "description": "action name",
+                            "name": "repo_name",
+                            "description": "repo name",
+                            "dataType": "string",
+                            "type": "string",
+                            "format": "",
+                            "allowMultiple": false,
+                            "required": true,
+                            "minimum": 0,
+                            "maximum": 0
+                        },
+                        {
+                            "paramType": "query",
+                            "name": "service",
+                            "description": "service",
+                            "dataType": "string",
+                            "type": "string",
+                            "format": "",
+                            "allowMultiple": false,
+                            "required": true,
+                            "minimum": 0,
+                            "maximum": 0
+                        }
+                    ],
+                    "responseMessages": [
+                        {
+                            "code": 200,
+                            "message": "",
+                            "responseType": "object",
+                            "responseModel": "github.com.terrform-schematics-demo.terraform-provider-ibm-api.utils.ActionResponse"
+                        },
+                        {
+                            "code": 404,
+                            "message": "",
+                            "responseType": "object",
+                            "responseModel": "string"
+                        },
+                        {
+                            "code": 500,
+                            "message": "",
+                            "responseType": "object",
+                            "responseModel": "string"
+                        }
+                    ],
+                    "produces": [
+                        "application/json"
+                    ]
+                }
+            ]
+        },
+        {
+            "path": "/v1/configuration/{repo_name}/statefile",
+            "description": "Get state file from backup folder",
+            "operations": [
+                {
+                    "httpMethod": "POST",
+                    "nickname": "TerraformerImportHandler",
+                    "type": "github.com.terrform-schematics-demo.terraform-provider-ibm-api.utils.ActionResponse",
+                    "items": {},
+                    "summary": "Rollback/Delete the state file.",
+                    "parameters": [
+                        {
+                            "paramType": "path",
+                            "name": "repo_name",
+                            "description": "repo name",
+                            "dataType": "string",
+                            "type": "string",
+                            "format": "",
+                            "allowMultiple": false,
+                            "required": true,
+                            "minimum": 0,
+                            "maximum": 0
+                        },
+                        {
+                            "paramType": "query",
+                            "name": "command",
+                            "description": "command",
                             "dataType": "string",
                             "type": "string",
                             "format": "",
@@ -669,6 +793,12 @@ var apiDescriptionsJson = map[string]string{"v1": `{
                     "items": {},
                     "format": ""
                 },
+                "terraformer": {
+                    "type": "string",
+                    "description": "Terraformer wrapper",
+                    "items": {},
+                    "format": ""
+                },
                 "log_level": {
                     "type": "string",
                     "description": "The log level defing by user.",
@@ -731,6 +861,20 @@ var apiDescriptionsJson = map[string]string{"v1": `{
                 "value": {
                     "type": "string",
                     "description": "The variable's value",
+                    "items": {},
+                    "format": ""
+                }
+            }
+        },
+        "github.com.terrform-schematics-demo.terraform-provider-ibm-api.utils.TerraformerConfigRequest": {
+            "id": "github.com.terrform-schematics-demo.terraform-provider-ibm-api.utils.TerraformerConfigRequest",
+            "required": [
+                "git_url"
+            ],
+            "properties": {
+                "git_url": {
+                    "type": "string",
+                    "description": "The git url of your configuraltion",
                     "items": {},
                     "format": ""
                 }

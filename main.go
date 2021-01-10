@@ -13,14 +13,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/IBM-Cloud/terraform-provider-ibm-api/utils"
 	"github.com/fvbock/endless"
 	"github.com/gorilla/mux"
-	"github.com/terraform-provider-ibm-api/utils"
 	mgo "gopkg.in/mgo.v2"
 )
 
 var staticContent = flag.String("staticPath", "./swagger/swagger-ui", "Path to folder with Swagger UI")
 
+// IndexHandler ..
 func IndexHandler(w http.ResponseWriter, r *http.Request) {
 	isJsonRequest := false
 
@@ -40,6 +41,7 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ApiDescriptionHandler ..
 func ApiDescriptionHandler(w http.ResponseWriter, r *http.Request) {
 	apiKey := strings.Trim(r.RequestURI, "/")
 
@@ -62,7 +64,7 @@ func main() {
 	ensureIndex(session)
 
 	var port int
-	flag.IntVar(&port, "p", 9080, "Port on which this server listens")
+	flag.IntVar(&port, "p", 8080, "Port on which this server listens")
 	flag.Parse()
 	r := mux.NewRouter()
 
@@ -93,7 +95,13 @@ func main() {
 
 	r.HandleFunc("/v1/configuration/{repo_name}/{action}/{log_file}", utils.ViewLogHandler)
 
-	r.HandleFunc("/v1/configuration/{repo_name}/{action}", utils.GetActionDetailsHandler(session)).Methods("GET")
+	//r.HandleFunc("/v1/configuration/{repo_name}/{action}", utils.GetActionDetailsHandler(session)).Methods("GET")
+
+	r.HandleFunc("/v1/configuration/{repo_name}/import", utils.TerraformerImportHandler(session)).Methods("POST")
+
+	r.HandleFunc("/v1/configuration/{repo_name}/statefile", utils.TerraformerStateHandler(session)).Methods("GET")
+
+	r.HandleFunc("/v1/configuration/{repo_name}/statefile", utils.TerraformerStateHandler(session)).Methods("POST")
 
 	fmt.Println("Server will listen at port", port)
 	muxWithMiddlewares := http.TimeoutHandler(r, time.Second*60, "Timeout!")

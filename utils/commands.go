@@ -2,6 +2,8 @@ package utils
 
 import (
 	"fmt"
+	"io"
+	"log"
 	"net/url"
 	"os"
 	"os/exec"
@@ -24,7 +26,7 @@ func cloneRepo(msg ConfigRequest) ([]byte, string, error) {
 		stdouterr, err = pullRepo(p)
 
 	} else {
-		cmd := exec.Command("git", "clone", gitURL)
+		cmd := exec.Command("git", "clone", "-b", "add-ibmcloud-provider", gitURL)
 		fmt.Println(cmd.Args)
 		cmd.Dir = currentDir
 		stdouterr, err = cmd.CombinedOutput()
@@ -61,6 +63,22 @@ func createFile(msg ConfigRequest, path string) {
 	writeFile(path, msg)
 }
 
+func createFiles(path string) {
+	// check if file exists
+	var _, err = os.Stat(path)
+
+	// create file if not exists
+	if os.IsNotExist(err) {
+		var file, err = os.Create(path)
+		if isError(err) {
+			return
+		}
+		defer file.Close()
+	}
+
+	fmt.Println("File Created Successfully", path)
+}
+
 func pullRepo(repoName string) ([]byte, error) {
 	cmd := exec.Command("git", "pull")
 	fmt.Println(cmd.Args)
@@ -88,8 +106,10 @@ func writeFile(path string, msg ConfigRequest) {
 
 	variables := msg.VariableStore
 
-	for _, v := range *variables {
-		_, err = file.WriteString(v.Name + " = \"" + v.Value + "\" \n")
+	if variables != nil {
+		for _, v := range *variables {
+			_, err = file.WriteString(v.Name + " = \"" + v.Value + "\" \n")
+		}
 	}
 
 	// save changes
@@ -97,4 +117,52 @@ func writeFile(path string, msg ConfigRequest) {
 	if err != nil {
 		return
 	}
+}
+
+func deleteFile(path string) {
+	// delete file
+	var err = os.Remove(path)
+	if isError(err) {
+		return
+	}
+
+	log.Println("File Deleted")
+}
+
+func removeDir(path string) {
+	// Remove all the directories and files
+	// Using RemoveAll() function
+	err := os.RemoveAll(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+// Copy ..
+func Copy(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, in)
+	if err != nil {
+		return err
+	}
+	return out.Close()
+}
+
+func isError(err error) bool {
+	if err != nil {
+		log.Println(err.Error())
+	}
+
+	return (err != nil)
 }
