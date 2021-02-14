@@ -1,0 +1,8 @@
+# server executable
+terraform-provider-ibm-api
+
+# Ignore all the vendored dependencies
+vendor/*
+
+# vs code for dev debugging
+.vscode/*
