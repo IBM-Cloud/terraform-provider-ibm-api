@@ -11,19 +11,13 @@ COPY . $API_REPO
 
 ENV GOPATH="/go"
 ENV PATH=$PATH:/usr/local/go/bin:/go/bin
+ENV TERRAFORMER_VERSION="0.8.10"
 
-# Compiles and installs the packages named by the import paths,
-# along with their dependencies.
-# -o apiserver to change the name .. change in Makefile as well then. 
-RUN cd $API_REPO && \
-    go install -v -ldflags "-X main.commit=${gitSHA} -X main.travisBuildNumber=${travisBuildNo} -X main.buildDate=${buildDate}"
+RUN cd ${API_REPO} && . ./configure_image.sh
 
 EXPOSE 9080
 
-# RUN chmod -R 775 /go
-# RUN addgroup -g 1001 -S appuser && adduser -u 1001 -S appuser -G appuser
-# RUN chown -R appuser:appuser /go
-# USER appuser
+USER appuser
 
 WORKDIR $API_REPO
 
