@@ -23,6 +23,22 @@ It is used to perform terraform action on ibm cloud provider using REST API
        export MOUNT_DIR=<dir to clone the repo>
        go run main.go docs.go
 
+*  Or 
+
+       make run-mac <or make run-local for linux>
+
+*  Or run as docker container
+
+       make docker-build
+       make docker-run
+
+    First two need mongodb service running on localhost:27017. Third needs mongodb running as docker container. To run mongodb as docker container with 27017 exposed outside. This will work for all three methods above. Run this before any of the above steps
+        
+        make docker-run-mongo
+        
+
+
+
 ## How to run the terraform-ibmcloud-provider-api as a container
         
         cd /go/src/github.com

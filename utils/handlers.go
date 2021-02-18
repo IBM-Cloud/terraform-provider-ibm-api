@@ -76,29 +76,6 @@ type EnvironmentVariableRequest struct {
 	Value string `json:"value,required" binding:"required" description:"The variable's value"`
 }
 
-var currentDir = os.Getenv("MOUNT_DIR")
-
-var logDir = currentDir + "/log/"
-
-var stateDir = currentDir + "/state"
-
-var terraformerfWrapperDir = currentDir + "/terraformer_wrapper"
-
-func init() {
-
-	if currentDir == "" {
-		panic("MOUNT_DIR is not set. Please set MOUNT_DIR to continue")
-	}
-
-	if _, err := os.Stat(logDir); os.IsNotExist(err) {
-		os.MkdirAll(logDir, os.ModePerm)
-	}
-	if _, err := os.Stat(stateDir); os.IsNotExist(err) {
-		os.MkdirAll(stateDir, os.ModePerm)
-	}
-
-}
-
 //ConfHandler handles request to kickoff git clone of the repo.
 // @Title ConfHandler
 // @Description clone the configuration repo
