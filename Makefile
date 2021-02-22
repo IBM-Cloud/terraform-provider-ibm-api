@@ -30,10 +30,9 @@ vendor:
 
 # Not tested
 .PHONY: swagger
-swagger:
-	go generate ./server
+swagger: vendor
+	go generate main.go
 	cd ./swagger; statik -src=./ui -f
-	go mod vendor
 	swagger generate spec -m -o ./swagger/ui/swagger.json
 	swagger validate ./swagger/ui/swagger.json
 	cd ./swagger; statik -src=./ui -f

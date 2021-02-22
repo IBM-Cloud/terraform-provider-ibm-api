@@ -35,8 +35,8 @@ type ConfigRequest struct {
 	ConfigName    string            `json:"config_name,omitempty" description:"The configuration repo name"`
 	VariableStore *VariablesRequest `json:"variablestore,omitempty" description:"The environments' variable store"`
 	LOGLEVEL      string            `json:"log_level,omitempty" description:"The log level defing by user."`
-	Terraformer   string            `json:"terraformer,omitempty" description:"The terraformer."`
-	Service       string            `json:"service,omitempty" description:"The terraformer services."`
+	// Terraformer   string            `json:"terraformer,omitempty" description:"The terraformer."`
+	Service string `json:"service,omitempty" description:"The terraformer services."`
 }
 
 // ConfigResponse -
