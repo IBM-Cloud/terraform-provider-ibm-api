@@ -48,10 +48,18 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 func APIDescriptionHandler(w http.ResponseWriter, r *http.Request) {
 	apiKey := strings.Trim(r.RequestURI, "/")
 
-	if json, ok := apiDescriptionsJson[apiKey]; ok {
-		w.Write([]byte(json))
+	if apiKey == "v1" {
+		if json, ok := apiDescriptionsJson[apiKey]; ok {
+			w.Write([]byte(json))
+		} else {
+			w.WriteHeader(http.StatusNotFound)
+		}
 	} else {
-		w.WriteHeader(http.StatusNotFound)
+		if json, ok := apiDescriptionsJsonV2[apiKey]; ok {
+			w.Write([]byte(json))
+		} else {
+			w.WriteHeader(http.StatusNotFound)
+		}
 	}
 }
 
@@ -61,7 +69,8 @@ func main() {
 
 	config := utils.GetConfiguration()
 
-	session, err := mgo.Dial(fmt.Sprintf("%s:%s@%s:%d", config.Mongo.UserName, config.Mongo.Password, config.Mongo.Host, config.Mongo.Port))
+	//session, err := mgo.Dial(fmt.Sprintf("%s:%s@%s:%d", config.Mongo.UserName, config.Mongo.Password, config.Mongo.Host, config.Mongo.Port))
+	session, err := mgo.Dial("localhost")
 	if err != nil {
 		log.Fatalln("Could not create mongo db session", err)
 	}
@@ -77,7 +86,12 @@ func main() {
 	r.PathPrefix("/swagger-ui").Handler(http.StripPrefix("/swagger-ui", http.FileServer(http.Dir(*staticContent))))
 
 	for apiKey := range apiDescriptionsJson {
-		log.Println("sdsadsadsada", apiKey)
+		log.Println("API :", apiKey)
+		r.HandleFunc("/"+apiKey, APIDescriptionHandler)
+	}
+
+	for apiKey := range apiDescriptionsJsonV2 {
+		log.Println("API :", apiKey)
 		r.HandleFunc("/"+apiKey, APIDescriptionHandler)
 	}
 
@@ -99,13 +113,19 @@ func main() {
 
 	r.HandleFunc("/v1/configuration/{repo_name}/{action}/{log_file}", utils.ViewLogHandler)
 
-	//r.HandleFunc("/v1/configuration/{repo_name}/{action}", utils.GetActionDetailsHandler(session)).Methods("GET")
+	r.HandleFunc("/v1/configuration/{repo_name}/{action}", utils.GetActionDetailsHandler(session)).Methods("GET")
 
-	r.HandleFunc("/v1/configuration/{repo_name}/import", utils.TerraformerImportHandler(session)).Methods("POST")
+	r.HandleFunc("/v2/configuration", utils.ConfHandler(session)).Methods("POST")
 
-	r.HandleFunc("/v1/configuration/{repo_name}/statefile", utils.TerraformerStateHandler(session)).Methods("GET")
+	r.HandleFunc("/v2/configuration/{repo_name}/import", utils.TerraformerImportHandler(session)).Methods("GET")
 
-	r.HandleFunc("/v1/configuration/{repo_name}/statefile", utils.TerraformerStateHandler(session)).Methods("POST")
+	r.HandleFunc("/v2/configuration/{repo_name}/{action}/{actionID}/log", utils.LogHandler).Methods("GET")
+
+	r.HandleFunc("/v2/configuration/{repo_name}/{action}/{actionID}/status", utils.StatusHandler(session)).Methods("GET")
+
+	r.HandleFunc("/v2/configuration/{repo_name}/statefile", utils.TerraformerStateHandler(session)).Methods("GET")
+
+	r.HandleFunc("/v2/configuration/{repo_name}/statefile", utils.TerraformerStateHandler(session)).Methods("POST")
 
 	log.Println("Server will listen at port", config.Server.HTTPAddr, config.Server.HTTPPort)
 	muxWithMiddlewares := http.TimeoutHandler(r, time.Second*60, "Timeout!")
