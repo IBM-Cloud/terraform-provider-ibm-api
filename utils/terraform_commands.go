@@ -46,7 +46,7 @@ func TerraformShow(configDir, stateDir string, scenario string, timeout *time.Du
 //TerraformerImport ...
 func TerraformerImport(configDir, resources string, scenario string, timeout *time.Duration, randomID string) error {
 
-	return run("./terraformer", []string{"import", "ibm", fmt.Sprintf("--resources=%s", resources)}, configDir, scenario, timeout, randomID)
+	return run("terraformer", []string{"import", "ibm", fmt.Sprintf("-r=%s", resources), "--compact"}, configDir, scenario, timeout, randomID)
 }
 
 //TerraformerVendorSync ...
@@ -83,6 +83,23 @@ func TerraformMergeTemplateFile(configDir string, stateFile string, resourceName
 func TerraformReplaceProvider(configDir string, stateFile string, resourceName string, scenario string, timeout *time.Duration, randomID string) error {
 	//terraform state
 	return run("terraform", []string{"state", "replace-provider", "-auto-approve", "registry.terraform.io/-/ibm", "registry.terraform.io/ibm-cloud/ibm", resourceName, resourceName}, configDir, scenario, timeout, randomID)
+}
+
+// CompareStateFile ..
+func CompareStateFile(terraformfObj, terraformerObj ResourceList, src, dest, configDir, scenario, randomID string, timeout *time.Duration) {
+	var isExist bool
+	for _, v := range terraformerObj {
+		isExist = false
+		for _, k := range terraformfObj {
+			if v.ID == k.ID && v.ResourceType == k.ResourceType {
+				isExist = true
+			}
+		}
+		if isExist == false {
+			run("terraform", []string{"state", "mv", fmt.Sprintf("-state=%s", src), fmt.Sprintf("-state-out=%s", dest), v.ResourceName, v.ResourceName}, configDir, scenario, timeout, randomID)
+		}
+	}
+	fmt.Println("\nTerraform moved resource from terraformer state file to terraform state file.")
 }
 
 func run(cmdName string, args []string, configDir string, scenario string, timeout *time.Duration, randomID string) error {

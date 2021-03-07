@@ -527,7 +527,7 @@ var apiDescriptionsJson = map[string]string{"v1": `{
                     "summary": "Merge TF state file and resources.",
                     "parameters": [
                         {
-                            "paramType": "path",
+                            "paramType": "query",
                             "name": "repo_name",
                             "description": "repo name",
                             "dataType": "string",
@@ -790,12 +790,6 @@ var apiDescriptionsJson = map[string]string{"v1": `{
                 "git_url": {
                     "type": "string",
                     "description": "The git url of your configuraltion",
-                    "items": {},
-                    "format": ""
-                },
-                "terraformer": {
-                    "type": "string",
-                    "description": "Terraformer wrapper",
                     "items": {},
                     "format": ""
                 },
