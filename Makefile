@@ -137,3 +137,12 @@ run-mac: environment environment2
 	API_MONGO_USERNAME=${MONGO_USER} \
 	API_MONGO_PASSWORD=${MONGO_PASSWORD} \
 	go run .
+
+
+.PHONY: build-cli
+build-cli: environment environment2
+	go build cmd/discovery/*.go
+
+.PHONY: install-cli
+install-cli: environment environment2
+	go install cmd/discovery/*.go
