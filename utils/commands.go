@@ -1,10 +1,8 @@
 package utils
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/url"
 	"os"
@@ -131,13 +129,26 @@ func deleteFile(path string) {
 	log.Println("File Deleted")
 }
 
-func removeDir(path string) {
-	// Remove all the directories and files
-	// Using RemoveAll() function
-	err := os.RemoveAll(path)
+func RemoveDir(path string) (err error) {
+	contents, err := filepath.Glob(path)
 	if err != nil {
-		log.Fatal(err)
+		return
 	}
+	for _, item := range contents {
+		err = os.RemoveAll(item)
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
+func CreateDir(dirName string) error {
+	err := os.Mkdir(dirName, 0777)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // Copy ..
@@ -167,48 +178,4 @@ func isError(err error) bool {
 	}
 
 	return (err != nil)
-}
-
-// ReadTerraformerStateFile ..
-func ReadTerraformerStateFile(terraformerStateFile string) ResourceList {
-	var rList ResourceList
-	file, _ := ioutil.ReadFile(terraformerStateFile)
-	tfData := TerraformSate{}
-	_ = json.Unmarshal([]byte(file), &tfData)
-	for i := 0; i < len(tfData.Modules); i++ {
-		rData := Resource{}
-		for k := range tfData.Modules[i].Resources {
-			rData.ResourceName = k
-			rData.ResourceType = tfData.Modules[i].Resources[k].ResourceType
-			for p := range tfData.Modules[i].Resources[k].Primary {
-				if p == "attributes" {
-					rData.ID = tfData.Modules[i].Resources[k].Primary[p].ID
-				}
-			}
-			rList = append(rList, rData)
-		}
-	}
-	fmt.Println("Terraformer state ::", len(rList))
-	return rList
-}
-
-// ReadTerraformStateFile ..
-func ReadTerraformStateFile(terraformStateFile string) ResourceList {
-	var rList ResourceList
-	file, _ := ioutil.ReadFile(terraformStateFile)
-	tfData := TerraformSate{}
-	_ = json.Unmarshal([]byte(file), &tfData)
-	for i := 0; i < len(tfData.Resources); i++ {
-		rData := Resource{}
-		rData.ResourceName = tfData.Resources[i].ResourceName
-		rData.ResourceType = tfData.Resources[i].ResourceType
-		if tfData.Resources[i].Mode != "data" {
-			for k := 0; k < len(tfData.Resources[i].Instances); k++ {
-				rData.ID = tfData.Resources[i].Instances[k].Attributes.ID
-			}
-			rList = append(rList, rData)
-		}
-	}
-	fmt.Println("Terraform state ::", len(rList))
-	return rList
 }

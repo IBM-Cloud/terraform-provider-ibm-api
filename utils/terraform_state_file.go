@@ -16,8 +16,9 @@ type Resources struct {
 
 // Instances ..
 type Instances struct {
-	Mode       string        `json:"schema_version"`
+	Mode       string        `json:"mode"`
 	Attributes AttributeBody `json:"attributes"`
+	DependsOn  []string      `json:"dependencies"`
 }
 
 // AttributeBody ..
@@ -30,9 +31,11 @@ type ResourceList []Resource
 
 // Resource ..
 type Resource struct {
-	ID           string
-	ResourceType string
-	ResourceName string
+	ID            string
+	ResourceType  string
+	ResourceName  string
+	DependsOn     []string
+	ResourceIndex int
 }
 
 // Modules ..

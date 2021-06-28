@@ -2,7 +2,6 @@ package utils
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
@@ -31,6 +30,11 @@ func TerraformPlan(configDir string, scenario string, timeout *time.Duration, ra
 	return run("terraform", []string{"plan"}, configDir, scenario, timeout, randomID)
 }
 
+//TerraformRefresh ...
+func TerraformRefresh(configDir string, scenario string, timeout *time.Duration, randomID string) error {
+	return run("terraform", []string{"refresh"}, configDir, scenario, timeout, randomID)
+}
+
 //TerraformDestroy ...
 func TerraformDestroy(configDir, stateDir string, scenario string, timeout *time.Duration, randomID string) error {
 
@@ -44,62 +48,21 @@ func TerraformShow(configDir, stateDir string, scenario string, timeout *time.Du
 }
 
 //TerraformerImport ...
-func TerraformerImport(configDir, resources string, scenario string, timeout *time.Duration, randomID string) error {
+func TerraformerImport(configDir, resources, tags string, scenario string, timeout *time.Duration, randomID string) error {
 
-	return run("terraformer", []string{"import", "ibm", fmt.Sprintf("-r=%s", resources), "--compact"}, configDir, scenario, timeout, randomID)
-}
-
-//TerraformerVendorSync ...
-func TerraformerVendorSync(configDir string, scenario string, timeout *time.Duration, randomID string) error {
-
-	return run("go", []string{"mod", "vendor"}, configDir, scenario, timeout, randomID)
-}
-
-//BuildTerraformer ...
-func BuildTerraformer(configDir string, scenario string, timeout *time.Duration, randomID string) error {
-
-	return run("go", []string{"build", "-v"}, configDir, scenario, timeout, randomID)
-}
-
-//TerraformerResourceList ...
-func TerraformerResourceList(configDir string, scenario string, timeout *time.Duration, randomID string) error {
-
-	return run("terraform", []string{"state", "list"}, configDir, scenario, timeout, randomID)
+	return run("terraformer", []string{"import", "ibm", fmt.Sprintf("--resources=%s", resources), tags, "--compact", fmt.Sprintf("-p=%s", configDir)}, configDir, scenario, timeout, randomID)
 }
 
 //TerraformMoveResource ...
-func TerraformMoveResource(configDir string, stateFile string, resourceName string, scenario string, timeout *time.Duration, randomID string) error {
+func TerraformMoveResource(configDir, srcStateFile, destStateFile, resourceName, scenario string, timeout *time.Duration, randomID string) error {
 
-	return run("terraform", []string{"state", "mv", fmt.Sprintf("-state-out=%s", stateFile), resourceName, resourceName}, configDir, scenario, timeout, randomID)
-}
-
-//TerraformMergeTemplateFile ...
-func TerraformMergeTemplateFile(configDir string, stateFile string, resourceName string, scenario string, timeout *time.Duration, randomID string) error {
-
-	return run("terraform", []string{"state", "mv", fmt.Sprintf("-state-out=%s", stateFile), resourceName, resourceName}, configDir, scenario, timeout, randomID)
+	return run("terraform", []string{"state", "mv", fmt.Sprintf("-state=%s", srcStateFile), fmt.Sprintf("-state-out=%s", destStateFile), resourceName, resourceName}, configDir, scenario, timeout, randomID)
 }
 
 //TerraformReplaceProvider ..
-func TerraformReplaceProvider(configDir string, stateFile string, resourceName string, scenario string, timeout *time.Duration, randomID string) error {
+func TerraformReplaceProvider(configDir, randomID string, timeout *time.Duration) error {
 	//terraform state
-	return run("terraform", []string{"state", "replace-provider", "-auto-approve", "registry.terraform.io/-/ibm", "registry.terraform.io/ibm-cloud/ibm", resourceName, resourceName}, configDir, scenario, timeout, randomID)
-}
-
-// CompareStateFile ..
-func CompareStateFile(terraformfObj, terraformerObj ResourceList, src, dest, configDir, scenario, randomID string, timeout *time.Duration) {
-	var isExist bool
-	for _, v := range terraformerObj {
-		isExist = false
-		for _, k := range terraformfObj {
-			if v.ID == k.ID && v.ResourceType == k.ResourceType {
-				isExist = true
-			}
-		}
-		if isExist == false {
-			run("terraform", []string{"state", "mv", fmt.Sprintf("-state=%s", src), fmt.Sprintf("-state-out=%s", dest), v.ResourceName, v.ResourceName}, configDir, scenario, timeout, randomID)
-		}
-	}
-	fmt.Println("\nTerraform moved resource from terraformer state file to terraform state file.")
+	return run("terraform", []string{"state", "replace-provider", "-auto-approve", "registry.terraform.io/-/ibm", "registry.terraform.io/ibm-cloud/ibm"}, configDir, "", timeout, randomID)
 }
 
 func run(cmdName string, args []string, configDir string, scenario string, timeout *time.Duration, randomID string) error {
@@ -241,44 +204,4 @@ func mergeResources(path string) error {
 	}
 
 	return nil
-}
-
-//CreateTerraformWrapper ..
-func CreateTerraformWrapper() {
-	//Remove terraform wrapper directory
-	removeDir(terraformerfWrapperDir)
-
-	//Create terraformer wrapper directory
-	err := os.MkdirAll(terraformerfWrapperDir, 0777)
-	if err != nil {
-		fmt.Println("File reading error :", err)
-		return
-	}
-
-	//Create new TF state file
-	_, err = os.Create(terraformerfWrapperDir + "/terraform.tfstate")
-	if err != nil {
-		fmt.Println("File reading error :", err)
-		return
-	}
-
-	//Copy provider.tf to terraformer wrapper
-	Copy("provider.tf", terraformerfWrapperDir+"/provider.tf")
-}
-
-//ReplaceStr ..
-func ReplaceStr(file, orgStr, replaceStr string) {
-
-	input, err := ioutil.ReadFile(file)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	output := bytes.Replace(input, []byte(orgStr), []byte(replaceStr), -1)
-
-	if err = ioutil.WriteFile(file, output, 0666); err != nil {
-		fmt.Println("File writing error :", err)
-		return
-	}
 }
