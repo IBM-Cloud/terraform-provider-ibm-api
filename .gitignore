@@ -10,3 +10,4 @@ vendor/*
 
 # # binary 
 /discovery
+cmd/discovery/discovery

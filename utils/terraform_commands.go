@@ -44,7 +44,7 @@ func TerraformDestroy(configDir, stateDir string, scenario string, timeout *time
 //TerraformShow ...
 func TerraformShow(configDir, stateDir string, scenario string, timeout *time.Duration, randomID string) error {
 
-	return run("terraform", []string{"show", fmt.Sprintf("%s", stateDir+"/"+scenario+".tfstate")}, configDir, scenario, timeout, randomID)
+	return run("terraform", []string{"show", stateDir + "/" + scenario + ".tfstate"}, configDir, scenario, timeout, randomID)
 }
 
 //TerraformerImport ...
@@ -136,7 +136,7 @@ func getLogFiles(logDir, scenario string) (stdoutFile, stderrFile *os.File, err 
 		return
 	}
 
-	if _, err := os.Stat(stderrPath); err == nil {
+	if _, err = os.Stat(stderrPath); err == nil {
 		stderrFile, err = os.OpenFile(stderrPath, os.O_APPEND|os.O_WRONLY, 0600)
 	} else {
 		stderrFile, err = os.Create(stderrPath)
@@ -161,7 +161,7 @@ func readLogFile(logID string) (stdout, stderr string, err error) {
 	return string(outFile), string(errFile), nil
 }
 
-func mergeResources(path string) error {
+func MergeResources(path string) error {
 	files, err := ioutil.ReadDir(path)
 	if err != nil {
 		log.Fatal(err)
@@ -169,9 +169,9 @@ func mergeResources(path string) error {
 
 	createFiles(terraformerfWrapperDir + "/main.tf")
 
+	rg, _ := regexp.Compile("^(output|main|terraform|provider)")
 	for _, f := range files {
-		match, _ := regexp.MatchString("^(output|main|terraform|provider)", f.Name())
-		if match == false {
+		if !rg.MatchString(f.Name()) {
 			data, err := ioutil.ReadFile(path + "/" + f.Name())
 			if err != nil {
 				fmt.Println("File reading error :", err)

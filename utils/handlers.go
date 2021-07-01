@@ -22,12 +22,12 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-var httpClient *http.Client
-var sessionMgo *mgo.Session
-var githubToken string
-var githubIBMToken string
+// var httpClient *http.Client
+// var sessionMgo *mgo.Session
+// var githubToken string
+// var githubIBMToken string
+// var currentOps = make(map[string]chan StatusResponse)
 var planTimeOut = 60 * time.Minute
-var currentOps = make(map[string]chan StatusResponse)
 
 // ConfigRequest -
 type ConfigRequest struct {
@@ -94,7 +94,7 @@ func ConfHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 		b, err := ioutil.ReadAll(r.Body)
 		defer r.Body.Close()
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -104,7 +104,7 @@ func ConfHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 		var configName string
 		err = json.Unmarshal(b, &msg)
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -113,7 +113,7 @@ func ConfHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 			configName = "discovery"
 			err = CreateDir(currentDir + "/" + configName)
 			if err != nil {
-				http.Error(w, err.Error(), 500)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 		} else if msg.ConfigName != "" {
@@ -121,13 +121,13 @@ func ConfHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 			configName = msg.ConfigName
 			err = CreateDir(currentDir + "/" + configName)
 			if err != nil {
-				http.Error(w, err.Error(), 500)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 		} else {
 			log.Println(msg.GitURL)
 			log.Println("Will clone git repo")
-			_, configName, err := cloneRepo(msg)
+			_, configName, err := CloneRepo(msg)
 			if err != nil {
 				log.Println("Eror Cloning repo..")
 				log.Printf("err : %v\n", err)
@@ -164,7 +164,7 @@ func ConfHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 // @Router /v1/configuration/{repo_name} [delete]
 func ConfDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "DELETE" {
-		http.Error(w, "Invalid request method.", 405)
+		http.Error(w, "Invalid request method.", http.StatusMethodNotAllowed)
 	}
 
 	vars := mux.Vars(r)
@@ -226,7 +226,7 @@ func PlanHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 				// Update the status in the db in case it is failed
 				err = UpdateMongodb(s, randomID, statusResponse.Status)
 				if err != nil {
-					http.Error(w, err.Error(), 500)
+					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
 				return
@@ -235,6 +235,10 @@ func PlanHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 
 			// Update the status in the db in case it is completed
 			err = UpdateMongodb(s, randomID, statusResponse.Status)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 			ResultToSlack(outURL, errURL, "plan", randomID, "Completed", webhook)
 		}()
 
@@ -251,7 +255,7 @@ func PlanHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 
 		output, err := json.MarshalIndent(actionResponse, "", "  ")
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("content-type", "application/json")
@@ -304,7 +308,7 @@ func ApplyHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 
 				err = UpdateMongodb(s, randomID, statusResponse.Status)
 				if err != nil {
-					http.Error(w, err.Error(), 500)
+					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
 				return
@@ -312,6 +316,10 @@ func ApplyHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 			statusResponse.Status = "Completed"
 			ResultToSlack(outURL, errURL, "apply", randomID, statusResponse.Status, webhook)
 			err = UpdateMongodb(s, randomID, statusResponse.Status)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 
 		}()
 		w.WriteHeader(202)
@@ -324,7 +332,7 @@ func ApplyHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 		InsertMongodb(s, actionResponse)
 		output, err := json.MarshalIndent(actionResponse, "", "  ")
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("content-type", "application/json")
@@ -375,7 +383,7 @@ func DestroyHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request)
 
 				err = UpdateMongodb(s, randomID, statusResponse.Status)
 				if err != nil {
-					http.Error(w, err.Error(), 500)
+					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
 				return
@@ -383,6 +391,10 @@ func DestroyHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request)
 			statusResponse.Status = "Completed"
 			ResultToSlack(outURL, errURL, "destroy", randomID, "Completed", webhook)
 			err = UpdateMongodb(s, randomID, statusResponse.Status)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 
 		}()
 
@@ -397,7 +409,7 @@ func DestroyHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request)
 
 		output, err := json.MarshalIndent(actionResponse, "", "  ")
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("content-type", "application/json")
@@ -450,7 +462,7 @@ func ShowHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 
 				err = UpdateMongodb(s, randomID, statusResponse.Status)
 				if err != nil {
-					http.Error(w, err.Error(), 500)
+					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
 				return
@@ -461,6 +473,10 @@ func ShowHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 			statusResponse.Status = "Completed"
 			ResultToSlack(outURL, errURL, "show", randomID, statusResponse.Status, webhook)
 			err = UpdateMongodb(s, randomID, statusResponse.Status)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 
 		}()
 		w.WriteHeader(202)
@@ -475,7 +491,7 @@ func ShowHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 
 		output, err := json.MarshalIndent(actionResponse, "", "  ")
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("content-type", "application/json")
@@ -511,7 +527,7 @@ func LogHandler(w http.ResponseWriter, r *http.Request) {
 
 	outFile, errFile, err := readLogFile(actionID)
 	if err != nil {
-		http.Error(w, err.Error(), 404)
+		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
@@ -523,7 +539,7 @@ func LogHandler(w http.ResponseWriter, r *http.Request) {
 
 	output, err := json.MarshalIndent(response, "", "  ")
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("content-type", "application/json")
@@ -564,13 +580,13 @@ func StatusHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) 
 		c := session.DB("action").C("actionDetails")
 		err := c.Find(bson.M{"actionid": actionID}).One(&actionResponse)
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		response.Status = actionResponse.Status
 		output, err := json.MarshalIndent(response, "", "  ")
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("content-type", "application/json")
@@ -582,7 +598,7 @@ func StatusHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) 
 func ViewLogHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != "GET" {
-		http.Error(w, "Invalid request method.", 405)
+		http.Error(w, "Invalid request method.", http.StatusMethodNotAllowed)
 		return
 	}
 	vars := mux.Vars(r)
@@ -624,7 +640,7 @@ func GetActionDetailsHandler(s *mgo.Session) func(w http.ResponseWriter, r *http
 
 		err := c.Find(bson.M{"action": action}).All(&actionResponse)
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -633,7 +649,7 @@ func GetActionDetailsHandler(s *mgo.Session) func(w http.ResponseWriter, r *http
 		output, err := json.MarshalIndent(actionResponse, "", "  ")
 
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("content-type", "application/json")
@@ -665,7 +681,7 @@ func TerraformerImportHandler(s *mgo.Session) func(w http.ResponseWriter, r *htt
 		_, err := ioutil.ReadAll(r.Body)
 		defer r.Body.Close()
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		// Read Query Parameter
@@ -701,7 +717,7 @@ func TerraformerImportHandler(s *mgo.Session) func(w http.ResponseWriter, r *htt
 		discoveryDir := currentDir + "/" + "discovery"
 		err = RemoveDir(discoveryDir + "/*")
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -718,7 +734,7 @@ func TerraformerImportHandler(s *mgo.Session) func(w http.ResponseWriter, r *htt
 					// Update the status in the db in case it is failed
 					err = UpdateMongodb(s, randomID, statusResponse.Status)
 					if err != nil {
-						http.Error(w, err.Error(), 500)
+						http.Error(w, err.Error(), http.StatusInternalServerError)
 						return
 					}
 					return
@@ -727,7 +743,7 @@ func TerraformerImportHandler(s *mgo.Session) func(w http.ResponseWriter, r *htt
 				// Update the status in the db in case it is completed
 				err = UpdateMongodb(s, randomID, statusResponse.Status)
 				if err != nil {
-					http.Error(w, err.Error(), 500)
+					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
 			} else if command == "merge" {
@@ -739,7 +755,7 @@ func TerraformerImportHandler(s *mgo.Session) func(w http.ResponseWriter, r *htt
 					// Update the status in the db in case it is failed
 					err = UpdateMongodb(s, randomID, statusResponse.Status)
 					if err != nil {
-						http.Error(w, err.Error(), 500)
+						http.Error(w, err.Error(), http.StatusInternalServerError)
 						return
 					}
 					return
@@ -750,7 +766,7 @@ func TerraformerImportHandler(s *mgo.Session) func(w http.ResponseWriter, r *htt
 				//Backup repo TF file.
 				err = Copy(repoDir+"/terraform.tfstate", repoDir+"/terraform.tfstate_backup")
 				if err != nil {
-					http.Error(w, err.Error(), 500)
+					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
 
@@ -769,7 +785,7 @@ func TerraformerImportHandler(s *mgo.Session) func(w http.ResponseWriter, r *htt
 					log.Printf("# Config repo configuration/state is not equal !!\n")
 					err = MergeStateFile(terraformObj, terraformerObj, terraformerSateFile, terraformStateFile, currentDir, "", randomID, &planTimeOut)
 					if err != nil {
-						http.Error(w, err.Error(), 500)
+						http.Error(w, err.Error(), http.StatusInternalServerError)
 						return
 					}
 				}
@@ -777,7 +793,7 @@ func TerraformerImportHandler(s *mgo.Session) func(w http.ResponseWriter, r *htt
 				// Update the status in the db in case it is completed
 				err = UpdateMongodb(s, randomID, statusResponse.Status)
 				if err != nil {
-					http.Error(w, err.Error(), 500)
+					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
 			}
@@ -804,7 +820,7 @@ func TerraformerImportHandler(s *mgo.Session) func(w http.ResponseWriter, r *htt
 
 		output, err := json.MarshalIndent(actionResponse, "", "  ")
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("content-type", "application/json")
@@ -836,7 +852,7 @@ func TerraformerStateHandler(s *mgo.Session) func(w http.ResponseWriter, r *http
 		b, err := ioutil.ReadAll(r.Body)
 		defer r.Body.Close()
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		// Read Query Parameter
@@ -862,7 +878,7 @@ func TerraformerStateHandler(s *mgo.Session) func(w http.ResponseWriter, r *http
 					//Backup TF file.
 					err = Copy(srvDir+"/terraform.tfstate_backup", srvDir+"/terraform.tfstate")
 					if err != nil {
-						http.Error(w, err.Error(), 500)
+						http.Error(w, err.Error(), http.StatusInternalServerError)
 						return
 					}
 
@@ -884,7 +900,7 @@ func TerraformerStateHandler(s *mgo.Session) func(w http.ResponseWriter, r *http
 
 		output, err := json.MarshalIndent(actionResponse, "", "  ")
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("content-type", "application/json")
