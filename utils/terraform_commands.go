@@ -48,9 +48,8 @@ func TerraformShow(configDir, stateDir string, scenario string, timeout *time.Du
 }
 
 //TerraformerImport ...
-func TerraformerImport(configDir, resources, tags string, scenario string, timeout *time.Duration, randomID string) error {
-
-	return run("terraformer", []string{"import", "ibm", fmt.Sprintf("--resources=%s", resources), tags, "--compact", fmt.Sprintf("-p=%s", configDir)}, configDir, scenario, timeout, randomID)
+func TerraformerImport(configDir string, opts []string, scenario string, timeout *time.Duration, randomID string) error {
+	return run("terraformer", append([]string{"import", "ibm", "--compact", fmt.Sprintf("-p=%s", configDir)}, opts...), configDir, scenario, timeout, randomID)
 }
 
 //TerraformMoveResource ...
