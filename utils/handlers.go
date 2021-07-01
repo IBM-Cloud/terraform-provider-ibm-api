@@ -662,7 +662,7 @@ func TerraformerImportHandler(s *mgo.Session) func(w http.ResponseWriter, r *htt
 		var statusResponse StatusResponse
 
 		// Read body
-		b, err := ioutil.ReadAll(r.Body)
+		_, err := ioutil.ReadAll(r.Body)
 		defer r.Body.Close()
 		if err != nil {
 			http.Error(w, err.Error(), 500)
@@ -673,8 +673,27 @@ func TerraformerImportHandler(s *mgo.Session) func(w http.ResponseWriter, r *htt
 		services := r.URL.Query().Get("services")
 		command := r.URL.Query().Get("command")
 		tags := r.URL.Query().Get("tags")
+		opts := []string{}
+		func() {
+			if services != "" {
+				opts = append(opts, "--resources="+services)
+			}
+			if tags != "" {
+				fmt.Println(tags)
+				splittedTags := strings.Split(tags, ",")
+				fmt.Println(splittedTags)
+				if len(splittedTags) > 0 {
+					for _, v := range splittedTags {
+						tag := strings.SplitN(v, ":", 2)
+						if len(tag) == 2 {
+							opts = append(opts, fmt.Sprintf("--%s=%s", strings.TrimSpace(strings.ToLower(tag[0])), tag[1]))
+						}
+					}
+				}
+			}
+		}()
 
-		b = make([]byte, 10)
+		b := make([]byte, 10)
 		rand.Read(b)
 		randomID := fmt.Sprintf("%x", b)
 
@@ -691,7 +710,7 @@ func TerraformerImportHandler(s *mgo.Session) func(w http.ResponseWriter, r *htt
 				if configName != "discovery" {
 					discoveryDir = currentDir + "/" + configName
 				}
-				err = DiscoveryImport(configName, services, tags, randomID, discoveryDir)
+				err = DiscoveryImport(configName, randomID, discoveryDir, opts)
 				if err != nil {
 					statusResponse.Error = err.Error()
 					statusResponse.Status = "Failed"
@@ -712,7 +731,7 @@ func TerraformerImportHandler(s *mgo.Session) func(w http.ResponseWriter, r *htt
 					return
 				}
 			} else if command == "merge" {
-				err = DiscoveryImport(configName, services, tags, randomID, discoveryDir)
+				err = DiscoveryImport(configName, randomID, discoveryDir, opts)
 				if err != nil {
 					statusResponse.Error = err.Error()
 					statusResponse.Status = "Failed"
