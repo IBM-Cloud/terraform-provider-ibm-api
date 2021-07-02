@@ -139,10 +139,12 @@ run-mac: environment environment2
 	go run .
 
 
+#go install cmd/discovery/*.go
 .PHONY: build-cli
-build-cli: environment environment2
-	go build cmd/discovery/*.go
+build-cli: 
+	cd cmd/discovery; go build
 
 .PHONY: install-cli
-install-cli: environment environment2
-	go install cmd/discovery/*.go
+install-cli:
+	cd cmd/discovery; go install
+	

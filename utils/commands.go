@@ -73,7 +73,8 @@ func createFiles(path string) {
 	// create file if not exists
 	if os.IsNotExist(err) {
 		var file, err = os.Create(path)
-		if isError(err) {
+		if err != nil {
+			log.Printf("Error: %s", err.Error())
 			return
 		}
 		defer file.Close()
@@ -122,15 +123,15 @@ func writeFile(path string, msg ConfigRequest) {
 	}
 }
 
-func deleteFile(path string) {
-	// delete file
-	var err = os.Remove(path)
-	if isError(err) {
-		return
-	}
-
-	log.Println("File Deleted")
-}
+// func deleteFile(path string) {
+// 	// delete file
+// 	err := os.Remove(path)
+// 	if err != nil {
+// 		log.Println(err.Error())
+// 		return
+// 	}
+// 	log.Println("File Deleted")
+// }
 
 func RemoveDir(path string) (err error) {
 	contents, err := filepath.Glob(path)
@@ -173,12 +174,4 @@ func Copy(src, dst string) error {
 		return err
 	}
 	return out.Close()
-}
-
-func isError(err error) bool {
-	if err != nil {
-		log.Println(err.Error())
-	}
-
-	return (err != nil)
 }

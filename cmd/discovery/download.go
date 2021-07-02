@@ -17,7 +17,7 @@ var goPath = os.Getenv("GOPATH")
 // take versions (default to latest) and provide output as installed path
 // ask user to add to the path
 
-func downloadAndInitialize(tfrVersion, tfVersion, installPath string) error {
+func downloadAndInitialize(tfrVersion, tfVersion, installPath, providerVersio string) error {
 	log.Printf("versions: terraformer %s and terraform %s\n", tfrVersion, tfVersion)
 
 	log.Println("TODO: Download terraformer and terraform here, if not available")

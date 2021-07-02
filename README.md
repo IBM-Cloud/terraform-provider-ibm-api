@@ -28,7 +28,7 @@ It is used to perform terraform action on ibm cloud provider using REST API
 *  Example commands
 
        discovery config --git_url https://github.com/srikar-git/ibm-vsi --config_dir testi
-       discovery import --services ibm_is_vpc --config_dir testi --config_name ibm-vsi
+       discovery import --services ibm_is_vpc --config_dir testi --repo_name ibm-vsi
 
 
 ## Steps to use the project as a server
