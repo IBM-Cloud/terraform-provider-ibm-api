@@ -11,7 +11,7 @@ import (
 var stdouterr []byte
 
 //It will clone the git repo which contains the configuration file.
-func cloneRepo(msg ConfigRequest) ([]byte, string, error) {
+func CloneRepo(msg ConfigRequest) ([]byte, string, error) {
 	gitURL := msg.GitURL
 	urlPath, err := url.Parse(msg.GitURL)
 	if err != nil {
@@ -21,7 +21,7 @@ func cloneRepo(msg ConfigRequest) ([]byte, string, error) {
 	extName := filepath.Ext(urlPath.Path)
 	p := baseName[:len(baseName)-len(extName)]
 	if _, err := os.Stat(currentDir + "/" + p); err == nil {
-		stdouterr, err = pullRepo(p)
+		stdouterr, err = PullRepo(p)
 
 	} else {
 		cmd := exec.Command("git", "clone", gitURL)
@@ -34,17 +34,17 @@ func cloneRepo(msg ConfigRequest) ([]byte, string, error) {
 	}
 	path := currentDir + "/" + p + "/terraform.tfvars"
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		createFile(msg, path)
+		CreateFile(msg, path)
 	} else {
 		err = os.Remove(path)
-		createFile(msg, path)
+		CreateFile(msg, path)
 	}
 
 	return stdouterr, p, err
 }
 
 //It will create a vars file
-func createFile(msg ConfigRequest, path string) {
+func CreateFile(msg ConfigRequest, path string) {
 	// detect if file exists
 
 	_, err := os.Stat(path)
@@ -61,7 +61,7 @@ func createFile(msg ConfigRequest, path string) {
 	writeFile(path, msg)
 }
 
-func pullRepo(repoName string) ([]byte, error) {
+func PullRepo(repoName string) ([]byte, error) {
 	cmd := exec.Command("git", "pull")
 	fmt.Println(cmd.Args)
 	cmd.Dir = currentDir + "/" + repoName

@@ -14,32 +14,32 @@ import (
 //TerraformInit ...
 func TerraformInit(configDir string, scenario string, timeout *time.Duration, randomID string) error {
 
-	return run("terraform", []string{"init"}, configDir, scenario, timeout, randomID)
+	return Run("terraform", []string{"init"}, configDir, scenario, timeout, randomID)
 }
 
 //TerraformApply ...
 func TerraformApply(configDir, stateDir string, scenario string, timeout *time.Duration, randomID string) error {
-	return run("terraform", []string{"apply", fmt.Sprintf("-state=%s", stateDir+"/"+scenario+".tfstate"), "-auto-approve"}, configDir, scenario, timeout, randomID)
+	return Run("terraform", []string{"apply", fmt.Sprintf("-state=%s", stateDir+"/"+scenario+".tfstate"), "-auto-approve"}, configDir, scenario, timeout, randomID)
 }
 
 //TerraformPlan ...
 func TerraformPlan(configDir string, scenario string, timeout *time.Duration, randomID string) error {
-	return run("terraform", []string{"plan"}, configDir, scenario, timeout, randomID)
+	return Run("terraform", []string{"plan"}, configDir, scenario, timeout, randomID)
 }
 
 //TerraformDestroy ...
 func TerraformDestroy(configDir, stateDir string, scenario string, timeout *time.Duration, randomID string) error {
 
-	return run("terraform", []string{"destroy", "-force", fmt.Sprintf("-state=%s", stateDir+"/"+scenario+".tfstate")}, configDir, scenario, timeout, randomID)
+	return Run("terraform", []string{"destroy", "-force", fmt.Sprintf("-state=%s", stateDir+"/"+scenario+".tfstate")}, configDir, scenario, timeout, randomID)
 }
 
 //TerraformShow ...
 func TerraformShow(configDir, stateDir string, scenario string, timeout *time.Duration, randomID string) error {
 
-	return run("terraform", []string{"show", fmt.Sprintf("%s", stateDir+"/"+scenario+".tfstate")}, configDir, scenario, timeout, randomID)
+	return Run("terraform", []string{"show", fmt.Sprintf("%s", stateDir+"/"+scenario+".tfstate")}, configDir, scenario, timeout, randomID)
 }
 
-func run(cmdName string, args []string, configDir string, scenario string, timeout *time.Duration, randomID string) error {
+func Run(cmdName string, args []string, configDir string, scenario string, timeout *time.Duration, randomID string) error {
 	cmd := exec.Command(cmdName, args...)
 	if timeout != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), *timeout)

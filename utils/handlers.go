@@ -29,6 +29,7 @@ var currentOps = make(map[string]chan StatusResponse)
 // ConfigRequest -
 type ConfigRequest struct {
 	GitURL        string            `json:"git_url,required" description:"The git url of your configuraltion"`
+	ConfigName    string            `json:"config_name,omitempty" description:"The configuration repo name"`
 	VariableStore *VariablesRequest `json:"variablestore,omitempty" description:"The environments' variable store"`
 	LOGLEVEL      string            `json:"log_level,omitempty" description:"The log level defing by user."`
 }
@@ -70,12 +71,6 @@ type EnvironmentVariableRequest struct {
 	Name  string `json:"name,required" binding:"required" description:"The variable's name"`
 	Value string `json:"value,required" binding:"required" description:"The variable's value"`
 }
-
-var currentDir = os.Getenv("MOUNT_DIR")
-
-var logDir = currentDir + "/log/"
-
-var stateDir = currentDir + "/state"
 
 func init() {
 
@@ -134,7 +129,7 @@ func ConfHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 
 		log.Println("Will clone git repo")
 
-		_, configName, err := cloneRepo(msg)
+		_, configName, err := CloneRepo(msg)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
@@ -228,7 +223,7 @@ func PlanHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 		ResultToSlack(outURL, errURL, "plan", randomID, "In-Progress", webhook)
 
 		go func() {
-			pullRepo(repoName)
+			PullRepo(repoName)
 			err := TerraformPlan(confDir, repoName, &planTimeOut, randomID)
 			if err != nil {
 				statusResponse.Error = err.Error()
@@ -307,7 +302,7 @@ func ApplyHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 		ResultToSlack(outURL, errURL, "apply", randomID, "In-Progress", webhook)
 		go func() {
 
-			pullRepo(repoName)
+			PullRepo(repoName)
 			err := TerraformApply(confDir, stateDir, repoName, &planTimeOut, randomID)
 			if err != nil {
 				statusResponse.Error = err.Error()

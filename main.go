@@ -13,9 +13,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/IBM-Cloud/terraform-provider-ibm-api/discovery"
+	"github.com/IBM-Cloud/terraform-provider-ibm-api/utils"
 	"github.com/fvbock/endless"
 	"github.com/gorilla/mux"
-	"github.com/terraform-provider-ibm-api/utils"
 	mgo "gopkg.in/mgo.v2"
 )
 
@@ -40,30 +41,41 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func ApiDescriptionHandler(w http.ResponseWriter, r *http.Request) {
+// APIDescriptionHandler ..
+func APIDescriptionHandler(w http.ResponseWriter, r *http.Request) {
 	apiKey := strings.Trim(r.RequestURI, "/")
 
-	if json, ok := apiDescriptionsJson[apiKey]; ok {
-		w.Write([]byte(json))
+	if apiKey == "v1" {
+		if json, ok := apiDescriptionsJson[apiKey]; ok {
+			w.Write([]byte(json))
+		} else {
+			w.WriteHeader(http.StatusNotFound)
+		}
 	} else {
-		w.WriteHeader(http.StatusNotFound)
+		if json, ok := apiDescriptionsJsonV2[apiKey]; ok {
+			w.Write([]byte(json))
+		} else {
+			w.WriteHeader(http.StatusNotFound)
+		}
 	}
 }
 
 func main() {
 
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+	config := utils.GetConfiguration()
+
+	//session, err := mgo.Dial(fmt.Sprintf("%s:%s@%s:%d", config.Mongo.UserName, config.Mongo.Password, config.Mongo.Host, config.Mongo.Port))
 	session, err := mgo.Dial("localhost")
 	if err != nil {
-		panic(err)
+		log.Fatalln("Could not create mongo db session", err)
 	}
 	defer session.Close()
 
 	session.SetMode(mgo.Monotonic, true)
 	ensureIndex(session)
 
-	var port int
-	flag.IntVar(&port, "p", 9080, "Port on which this server listens")
-	flag.Parse()
 	r := mux.NewRouter()
 
 	r.HandleFunc("/", IndexHandler)
@@ -71,8 +83,13 @@ func main() {
 	r.PathPrefix("/swagger-ui").Handler(http.StripPrefix("/swagger-ui", http.FileServer(http.Dir(*staticContent))))
 
 	for apiKey := range apiDescriptionsJson {
-		log.Println("sdsadsadsada", apiKey)
-		r.HandleFunc("/"+apiKey, ApiDescriptionHandler)
+		log.Println("API :", apiKey)
+		r.HandleFunc("/"+apiKey, APIDescriptionHandler)
+	}
+
+	for apiKey := range apiDescriptionsJsonV2 {
+		log.Println("API :", apiKey)
+		r.HandleFunc("/"+apiKey, APIDescriptionHandler)
 	}
 
 	r.HandleFunc("/v1/configuration", utils.ConfHandler(session)).Methods("POST")
@@ -95,11 +112,23 @@ func main() {
 
 	r.HandleFunc("/v1/configuration/{repo_name}/{action}", utils.GetActionDetailsHandler(session)).Methods("GET")
 
-	fmt.Println("Server will listen at port", port)
+	r.HandleFunc("/v2/configuration", discovery.ConfHandler(session)).Methods("POST")
+
+	r.HandleFunc("/v2/configuration/{repo_name}/import", discovery.TerraformerImportHandler(session)).Methods("GET")
+
+	r.HandleFunc("/v2/configuration/{repo_name}/{action}/{actionID}/log", utils.LogHandler).Methods("GET")
+
+	r.HandleFunc("/v2/configuration/{repo_name}/{action}/{actionID}/status", utils.StatusHandler(session)).Methods("GET")
+
+	r.HandleFunc("/v2/configuration/{repo_name}/statefile", discovery.TerraformerStateHandler(session)).Methods("GET")
+
+	r.HandleFunc("/v2/configuration/{repo_name}/statefile", discovery.TerraformerStateHandler(session)).Methods("POST")
+
+	log.Println("Server will listen at port", config.Server.HTTPAddr, config.Server.HTTPPort)
 	muxWithMiddlewares := http.TimeoutHandler(r, time.Second*60, "Timeout!")
-	err = endless.ListenAndServe(fmt.Sprintf(":%d", port), muxWithMiddlewares)
+	err = endless.ListenAndServe(fmt.Sprintf("%s:%d", config.Server.HTTPAddr, config.Server.HTTPPort), muxWithMiddlewares)
 	if err != nil {
-		fmt.Printf("Couldn't start the server %v", err)
+		log.Println("Couldn't start the server", err)
 	}
 }
 
