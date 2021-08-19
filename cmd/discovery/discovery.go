@@ -16,6 +16,8 @@ import (
 )
 
 var planTimeOut = 60 * time.Minute
+var cliBuild = "0.1"
+var pathSep = string(os.PathSeparator)
 
 // todo - can users set this directly
 // if msg.LOGLEVEL != "" {
@@ -45,72 +47,72 @@ func main() {
 				" version",
 			),
 			Action: func(ctx *cli.Context) error {
-				fmt.Println("0.1.1") // todo: @srikar - build proper version
+				fmt.Println(cliBuild) // todo: @srikar - build proper version
 				return nil
 			},
 			OnUsageError: func(ctx *cli.Context, err error, isSub bool) error {
 				return cli.ShowCommandHelp(ctx, ctx.Args().First())
 			},
 		},
-		{
-			Category: "discovery",
-			Name:     "dep",
-			Aliases:  []string{"dependency, dependencies, download"},
-			Usage: fmt.Sprint(
-				"discovery",
-				" dep",
-				" [--terraformer_version terraformer_version]",
-				" [--terraform_version terraform_version]",
-				" [--path path]",
-				" [--ibm_provider_version ibm_provider_version]",
-			),
-			Description: "Installs terraformer " +
-				"and terraform and terraform provider if executables are not found. Version " +
-				"matters only if binary is not already present",
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:  "terraformer_version",
-					Value: "latest",
-					Usage: "If terraformer executable is not found, this version will be installed. Defaults to latest",
-				},
-				cli.StringFlag{
-					Name:  "terraform_version",
-					Value: "latest",
-					Usage: "If terraform executable is not found, this version will be installed. Defaults to latest",
-				},
-				cli.StringFlag{
-					Name:  "path",
-					Usage: "Install the tf and tfr binaries here, if not given defaults to " + defaultPath,
-				},
-				cli.StringFlag{
-					Name:  "ibm_provider_version",
-					Value: "latest",
-					Usage: "If provider is not found, this version will be installed. Defaults to latest" +
-						"Installs at location as needed by terraform version",
-				},
-			},
+		// {
+		// 	Category: "discovery",
+		// 	Name:     "dep",
+		// 	Aliases:  []string{"dependency, dependencies, download"},
+		// 	Usage: fmt.Sprint(
+		// 		"discovery",
+		// 		" dep",
+		// 		" [--terraformer_version terraformer_version]",
+		// 		" [--terraform_version terraform_version]",
+		// 		" [--path path]",
+		// 		" [--ibm_provider_version ibm_provider_version]",
+		// 	),
+		// 	Description: "Installs terraformer " +
+		// 		"and terraform and terraform provider if executables are not found. Version " +
+		// 		"matters only if binary is not already present",
+		// 	Flags: []cli.Flag{
+		// 		cli.StringFlag{
+		// 			Name:  "terraformer_version",
+		// 			Value: "latest",
+		// 			Usage: "If terraformer executable is not found, this version will be installed. Defaults to latest",
+		// 		},
+		// 		cli.StringFlag{
+		// 			Name:  "terraform_version",
+		// 			Value: "latest",
+		// 			Usage: "If terraform executable is not found, this version will be installed. Defaults to latest",
+		// 		},
+		// 		cli.StringFlag{
+		// 			Name:  "path",
+		// 			Usage: "Install the tf and tfr binaries here, if not given defaults to " + defaultPath,
+		// 		},
+		// 		cli.StringFlag{
+		// 			Name:  "ibm_provider_version",
+		// 			Value: "latest",
+		// 			Usage: "If provider is not found, this version will be installed. Defaults to latest" +
+		// 				"Installs at location as needed by terraform version",
+		// 		},
+		// 	},
 
-			Action: func(c *cli.Context) error {
+		// 	Action: func(c *cli.Context) error {
 
-				tfrVersion := c.String("terraformer_version")
-				tfVersion := c.String("terraform_version")
-				ibmProviderVersion := c.String("terraform_version")
-				installPath := c.String("path")
+		// 		tfrVersion := c.String("terraformer_version")
+		// 		tfVersion := c.String("terraform_version")
+		// 		ibmProviderVersion := c.String("terraform_version")
+		// 		installPath := c.String("path")
 
-				err := downloadAndInitialize(tfrVersion, tfVersion, installPath, ibmProviderVersion)
-				if err != nil {
-					log.Println("ERROR: Couldn't check and download tf and tfer binaries")
-					return err
-				}
+		// 		err := downloadAndInitialize(tfrVersion, tfVersion, installPath, ibmProviderVersion)
+		// 		if err != nil {
+		// 			log.Println("ERROR: Couldn't check and download tf and tfer binaries")
+		// 			return err
+		// 		}
 
-				//  // todo: @srikar - downloaded here, add these to your path
-				return nil
-			},
-			OnUsageError: func(ctx *cli.Context, err error, isSub bool) error {
-				log.Println("ERROR: " + err.Error())
-				return cli.ShowCommandHelp(ctx, ctx.Command.Name)
-			},
-		},
+		// 		//  // todo: @srikar - downloaded here, add these to your path
+		// 		return nil
+		// 	},
+		// 	OnUsageError: func(ctx *cli.Context, err error, isSub bool) error {
+		// 		log.Println("ERROR: " + err.Error())
+		// 		return cli.ShowCommandHelp(ctx, ctx.Command.Name)
+		// 	},
+		// },
 		{
 			Category: "discovery",
 			Name:     "config",
@@ -136,7 +138,7 @@ func main() {
 					Usage: "If git_url is passed, Must be an empty existing folder. A folder to operate in. " +
 						"If git_url is not passed, this folder should have tf files already. In this case, " +
 						"empty means current folder. Can be used to download terraformer and terraform.",
-					Value: "./",
+					Value: "." + pathSep,
 				},
 			},
 
@@ -206,12 +208,11 @@ func main() {
 				cli.StringFlag{
 					Name:  "services",
 					Usage: "The IBM service(s) to import the resources from. Comma separated",
-					// todo: @srikar -  todo individual resources can be specified ?
 				},
 				cli.StringFlag{
 					Name:  "config_dir",
 					Usage: "Empty means current folder.",
-					Value: "./",
+					Value: "." + pathSep,
 				},
 				cli.StringFlag{
 					Name: "repo_name",
@@ -277,13 +278,13 @@ func main() {
 				log.Println("Backend random id created: Intermediate state here", randomID)
 
 				//Clean up discovery directory
-				discoveryDir := confDir + "/" + "discovery"
+				discoveryDir, _ := utils.Filepathjoin(confDir, "discovery")
 				if err := os.MkdirAll(discoveryDir, os.ModePerm); err != nil {
 					log.Println("Error in creating directory " + discoveryDir)
 					return err
 				}
 
-				err := utils.RemoveDir(discoveryDir + "/*")
+				err := utils.RemoveDir(discoveryDir + pathSep + "*")
 				if err != nil {
 					log.Println("Error in cleaning up directory " + confDir)
 					return err
@@ -292,7 +293,7 @@ func main() {
 				log.Println("Importing resources from ibm cloud")
 				if command == "default" {
 					if repoName != "discovery" {
-						discoveryDir = confDir + "/" + repoName
+						discoveryDir, _ = utils.Filepathjoin(confDir, repoName)
 					}
 
 					err = utils.DiscoveryImport(repoName, randomID, discoveryDir, opts)
@@ -310,19 +311,20 @@ func main() {
 						return err
 					}
 
-					log.Println("Imported resources from ibm cloud at " + confDir + "/generated" + "/ibm")
-					if _, err := os.Stat(confDir + "/generated" + "/ibm"); os.IsNotExist(err) {
+					generatedPath, _ := utils.Filepathjoin(confDir, "generated", "ibm")
+					log.Println("Imported resources from ibm cloud at " + generatedPath)
+					if _, err := os.Stat(generatedPath); os.IsNotExist(err) {
 						log.Println("Import not successful")
 						return nil
 					} else {
-						log.Printf("Import successful. Imported into %s\n", confDir+"/generated"+"/ibm")
+						log.Printf("Import successful. Imported into %s\n", generatedPath)
 					}
 
 					//Merge state files and templates in services
-					repoDir := confDir + "/" + repoName
+					repoDir, _ := utils.Filepathjoin(confDir, repoName)
 					//Backup repo TF file.
-					terraformStateFile := repoDir + "/terraform.tfstate"
-					err = utils.Copy(terraformStateFile, repoDir+"/terraform.tfstate_backup")
+					terraformStateFile := repoDir + pathSep + "terraform.tfstate"
+					err = utils.Copy(terraformStateFile, repoDir+pathSep+"terraform.tfstate_backup")
 					if err != nil {
 						log.Println("Error with copying file")
 						return err
@@ -339,7 +341,7 @@ func main() {
 
 					//Read state file from discovery repo directory
 					// terraformerStateFile := confDir + "/generated" + "/ibm/" + srv + "/terraform.tfstate"
-					terraformerStateFile := discoveryDir + "/terraform.tfstate"
+					terraformerStateFile := discoveryDir + pathSep + "terraform.tfstate"
 					terraformerObj := utils.ReadTerraformStateFile(terraformerStateFile, "discovery")
 
 					log.Printf("Comparing and merging statefiles local %s and remote %s\n",
@@ -396,30 +398,34 @@ func createDirs(confDir string, imp bool) (err error) {
 	}
 
 	if imp {
-		// if _, err = os.Stat(confDir + "/log/"); os.IsNotExist(err) {
-		// 	err = os.MkdirAll(confDir+"/log/", os.ModePerm)
+		// logDir, _ := utils.Filepathjoin(confDir + "log")
+		// if _, err = os.Stat(logDir); os.IsNotExist(err) {
+		// 	err = os.MkdirAll(logDir, os.ModePerm)
 		// 	if err != nil {
 		// 		return err
 		// 	}
 		// }
-		if _, err = os.Stat(confDir + "/state"); os.IsNotExist(err) {
-			err = os.MkdirAll(confDir+"/state", os.ModePerm)
+		stateDir, _ := utils.Filepathjoin(confDir + "state")
+		if _, err = os.Stat(stateDir); os.IsNotExist(err) {
+			err = os.MkdirAll(stateDir, os.ModePerm)
 			if err != nil {
 				return err
 			}
 		}
 
-		if _, err := os.Stat(confDir + "/terraformer_wrapper"); os.IsNotExist(err) {
-			err := os.MkdirAll(confDir+"/terraformer_wrapper", os.ModePerm)
+		tfWrapDir, _ := utils.Filepathjoin(confDir + "terraformer_wrapper")
+		if _, err := os.Stat(tfWrapDir); os.IsNotExist(err) {
+			err := os.MkdirAll(tfWrapDir, os.ModePerm)
 			if err != nil {
 				return err
 			}
 		}
+
 		utils.SetGlobalDirs(
 			confDir,
-			"", //confDir+"/log/",
-			confDir+"/state",
-			confDir+"/terraformer_wrapper",
+			"", // logDir,
+			stateDir,
+			tfWrapDir,
 		)
 	} else {
 		utils.SetGlobalDirs(confDir, "", "", "")

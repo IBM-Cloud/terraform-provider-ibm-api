@@ -51,7 +51,7 @@ func downloadResource(repository string, id float64, c chan int) {
 	matches := re.FindAllStringSubmatch(disp, -1)
 
 	if len(matches) == 0 || len(matches[0]) == 0 {
-		log.Println("WTF: ", matches)
+		log.Println("No matches: ", matches)
 		log.Println(resp.Header)
 		log.Println(req)
 		return
@@ -86,7 +86,7 @@ func downloadResource(repository string, id float64, c chan int) {
 func downloadTar(versionTag, repo, folder, tag string, assets, download bool) error {
 
 	if len(repo) == 0 {
-		log.Fatal("No repository provided")
+		return fmt.Errorf("no repository provided")
 	}
 
 	// command to call

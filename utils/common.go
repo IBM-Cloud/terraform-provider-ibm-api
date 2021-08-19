@@ -1,7 +1,10 @@
 package utils
 
 import (
+	"fmt"
 	"log"
+	"path/filepath"
+	"strings"
 
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -41,4 +44,15 @@ func InsertMongodb(s *mgo.Session, actionResponse ActionResponse) {
 		log.Println("Failed insert action details : ", err)
 		return
 	}
+}
+
+func Filepathjoin(dirPath string, pathElements ...string) (string, error) {
+	p := filepath.Join(append([]string{dirPath}, pathElements...)...)
+	p = filepath.FromSlash(p)
+
+	if !strings.HasPrefix(p, dirPath) {
+		err := fmt.Errorf("path = %q, should be relative to %q", p, dirPath)
+		return "", err
+	}
+	return p, nil
 }
