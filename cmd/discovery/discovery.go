@@ -265,7 +265,6 @@ func main() {
 					}
 				}
 
-				// todo: @srikar - handle all paths properly using os - using / wont work for windows
 				if err := createDirs(confDir, true); err != nil {
 					log.Println("Error in creating directory " + confDir)
 					return err
@@ -357,7 +356,6 @@ func main() {
 						err = utils.MergeStateFile(terraformObj, terraformerObj, terraformerStateFile,
 							terraformStateFile, confDir, "", randomID, &planTimeOut)
 						if err != nil {
-							// todo: @srikar - handle error
 							log.Println("# Couldn't merge state files", err)
 							return err
 						}

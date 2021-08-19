@@ -14,45 +14,45 @@ import (
 	"time"
 )
 
-// TerraformInit ... // todo: @srikar - What is scenario here .. It should be repo_name ?
+// TerraformInit ...
 func TerraformInit(configDir string, scenario string, timeout *time.Duration, randomID string) error {
 
 	return run("terraform", []string{"init"}, configDir, scenario, timeout, randomID)
 }
 
-// TerraformApply ... // todo: @srikar - What is scenario here .. It should be repo_name ?
+// TerraformApply ...
 func TerraformApply(configDir, stateDir string, scenario string, timeout *time.Duration, randomID string) error {
 	return run("terraform", []string{"apply", fmt.Sprintf("-state=%s", stateDir+"/"+scenario+".tfstate"), "-auto-approve"}, configDir, scenario, timeout, randomID)
 }
 
-// TerraformPlan ... // todo: @srikar - What is scenario here .. It should be repo_name ?
+// TerraformPlan ...
 func TerraformPlan(configDir string, scenario string, timeout *time.Duration, randomID string) error {
 	return run("terraform", []string{"plan"}, configDir, scenario, timeout, randomID)
 }
 
-// TerraformRefresh ... // todo: @srikar - What is scenario here .. It should be repo_name ?
+// TerraformRefresh ...
 func TerraformRefresh(configDir string, scenario string, timeout *time.Duration, randomID string) error {
 	return run("terraform", []string{"refresh"}, configDir, scenario, timeout, randomID)
 }
 
-// TerraformDestroy ... // todo: @srikar - What is scenario here .. It should be repo_name ?
+// TerraformDestroy ...
 func TerraformDestroy(configDir, stateDir string, scenario string, timeout *time.Duration, randomID string) error {
 
 	return run("terraform", []string{"destroy", "-force", fmt.Sprintf("-state=%s", stateDir+"/"+scenario+".tfstate")}, configDir, scenario, timeout, randomID)
 }
 
-// TerraformShow ... // todo: @srikar - What is scenario here .. It should be repo_name ?
+// TerraformShow ...
 func TerraformShow(configDir, stateDir string, scenario string, timeout *time.Duration, randomID string) error {
 
 	return run("terraform", []string{"show", stateDir + "/" + scenario + ".tfstate"}, configDir, scenario, timeout, randomID)
 }
 
-// TerraformerImport ... // todo: @srikar - What is scenario here .. It should be repo_name ?
+// TerraformerImport ...
 func TerraformerImport(configDir string, opts []string, scenario string, timeout *time.Duration, randomID string) error {
 	return run("terraformer", append([]string{"import", "ibm", "--compact", fmt.Sprintf("-p=%s", configDir)}, opts...), configDir, scenario, timeout, randomID)
 }
 
-// TerraformMoveResource ... // todo: @srikar - What is scenario here .. It should be repo_name ?
+// TerraformMoveResource ...
 func TerraformMoveResource(configDir, srcStateFile, destStateFile, resourceName, scenario string, timeout *time.Duration, randomID string) error {
 
 	return run("terraform", []string{"state", "mv", fmt.Sprintf("-state=%s", srcStateFile), fmt.Sprintf("-state-out=%s", destStateFile), resourceName, resourceName}, configDir, scenario, timeout, randomID)
