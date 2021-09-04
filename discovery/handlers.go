@@ -180,7 +180,7 @@ func TerraformerImportHandler(s *mgo.Session) func(w http.ResponseWriter, r *htt
 				if configName != "discovery" {
 					discoveryDir = utils.GetConfiguration().Server.MountDir + "/" + configName
 				}
-				err = DiscoveryImport(configName, randomID, discoveryDir, opts)
+				err = DiscoveryImport(randomID, discoveryDir, opts)
 				if err != nil {
 					statusResponse.Error = err.Error()
 					statusResponse.Status = "Failed"
@@ -201,7 +201,7 @@ func TerraformerImportHandler(s *mgo.Session) func(w http.ResponseWriter, r *htt
 					return
 				}
 			} else if command == "merge" {
-				err = DiscoveryImport(configName, randomID, discoveryDir, opts)
+				err = DiscoveryImport(randomID, discoveryDir, opts)
 				if err != nil {
 					statusResponse.Error = err.Error()
 					statusResponse.Status = "Failed"

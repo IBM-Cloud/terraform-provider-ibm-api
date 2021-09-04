@@ -22,6 +22,7 @@ import (
 
 var staticContent = flag.String("staticPath", "./swagger/swagger-ui", "Path to folder with Swagger UI")
 
+// IndexHandler ..
 func IndexHandler(w http.ResponseWriter, r *http.Request) {
 	isJsonRequest := false
 
@@ -76,6 +77,9 @@ func main() {
 	session.SetMode(mgo.Monotonic, true)
 	ensureIndex(session)
 
+	var port int
+	flag.IntVar(&port, "p", 8080, "Port on which this server listens")
+	flag.Parse()
 	r := mux.NewRouter()
 
 	r.HandleFunc("/", IndexHandler)

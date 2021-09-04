@@ -1,11 +1,17 @@
 package utils
 
 import (
+	"fmt"
 	"log"
+	"os"
+	"path/filepath"
+	"strings"
 
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
+
+var pathSep = string(os.PathSeparator)
 
 //ResultToSlack will send result to slack
 func ResultToSlack(outURL, errURL, action, randomID, status, webhook string) {
@@ -41,4 +47,19 @@ func InsertMongodb(s *mgo.Session, actionResponse ActionResponse) {
 		log.Println("Failed insert action details : ", err)
 		return
 	}
+}
+
+func Filepathjoin(dirPath string, pathElements ...string) (string, error) {
+	log.Println("p1", pathElements)
+	p := filepath.Join(append([]string{dirPath}, pathElements...)...)
+	log.Println("p2", p, pathElements)
+	p = filepath.FromSlash(p)
+
+	log.Println("p3", p)
+	log.Println("p4", p, dirPath)
+	if !strings.HasPrefix(p, dirPath) {
+		err := fmt.Errorf("path = %q, should be relative to %q", p, dirPath)
+		return p, err
+	}
+	return p, nil
 }

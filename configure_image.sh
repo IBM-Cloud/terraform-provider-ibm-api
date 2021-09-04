@@ -61,6 +61,7 @@ cd /tmp
 # builds and installs terraformer. Method 2
 # Current use - Remove after ibmcloud is available as release.
 tfinst_bin="terraformer"
+tfinst_bin_ibm="terraformer-ibm"
 echo "\n### Cloning, Building and Installing Terraformer as /go/bin/${tfinst_bin}"
 tfclone_url="https://github.com/GoogleCloudPlatform/terraformer.git"
 # clone - Not cloning under gopath. Since it's go mods, it should be fine
@@ -77,6 +78,7 @@ go env
 echo "\n Here is the go path $GOPATH"
 #go build -v -o $GOPATH/bin/${tfinst_bin}
 # GO111MODULE=auto GOBIN=/go/bin GOFLAGS=-mod=vendor 
+echo "\n### Building and installing"
 go build -v
 if [ $? -ne 0 ] ; then
   echo "ERROR: failed while making go build command for terraform"
@@ -85,7 +87,7 @@ fi
 echo "\n### Installation done, setting permissions"
 # Executable permission
 #mv /go/bin/${tfinst_bin} /go/bin
-mv ${tfinst_bin} /go/bin/${tfinst_bin}
+mv ${tfinst_bin} /go/bin/${tfinst_bin}  # todo: @srikar - check this once
 echo "Giving permissions"
 chmod +x /go/bin/${tfinst_bin}
 

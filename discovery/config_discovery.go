@@ -97,11 +97,11 @@ func ReadTerraformStateFile(terraformStateFile, repoType string) map[string]inte
 }
 
 // DiscoveryImport ..
-func DiscoveryImport(configName, randomID, discoveryDir string, opts []string) error {
+func DiscoveryImport(randomID, discoveryDir string, opts []string) error {
 	log.Printf("# let's import the resources (%s) 2/6:\n", opts[0])
 
 	// Import the terraform resources & state files.
-	err := TerraformerImport(discoveryDir, opts, configName, &planTimeOut, randomID)
+	err := TerraformerImport(discoveryDir, opts, &planTimeOut, randomID)
 	if err != nil {
 		return err
 	}
@@ -118,14 +118,14 @@ func DiscoveryImport(configName, randomID, discoveryDir string, opts []string) e
 
 	//Run terraform init commnd
 	log.Println("# we need to init our Terraform project [4/6]:")
-	err = utils.TerraformInit(discoveryDir, "", &planTimeOut, randomID)
+	err = utils.TerraformInit(discoveryDir, &planTimeOut, randomID)
 	if err != nil {
 		return err
 	}
 
 	//Run terraform refresh commnd on the generated state file
 	log.Println("# and finally compare what we imported with what we currently have [5/6]:")
-	err = TerraformRefresh(discoveryDir, "", &planTimeOut, randomID)
+	err = TerraformRefresh(discoveryDir, &planTimeOut, randomID)
 	if err != nil {
 		return err
 	}
@@ -222,7 +222,7 @@ func MergeStateFile(configRepoMap, discoveryRepoMap map[string]interface{}, src,
 	//Move resource from discovery repo to config repo state file
 	if len(AddResourceList) > 0 {
 		for _, resource := range AddResourceList {
-			err = TerraformMoveResource(configDir, src, dest, resource, "", &planTimeOut, randomID)
+			err = TerraformMoveResource(configDir, src, dest, resource, &planTimeOut, randomID)
 			if err != nil {
 				return err
 			}

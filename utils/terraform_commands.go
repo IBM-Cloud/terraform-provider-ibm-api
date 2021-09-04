@@ -5,44 +5,45 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"path"
 	"time"
 )
 
-//TerraformInit ...
-func TerraformInit(configDir string, scenario string, timeout *time.Duration, randomID string) error {
+// TerraformInit ...
+func TerraformInit(execDir string, timeout *time.Duration, randomID string) error {
 
-	return Run("terraform", []string{"init"}, configDir, scenario, timeout, randomID)
+	return Run("terraform", []string{"init"}, execDir, timeout, randomID)
 }
 
-//TerraformApply ...
-func TerraformApply(configDir, stateDir string, scenario string, timeout *time.Duration, randomID string) error {
-	return Run("terraform", []string{"apply", fmt.Sprintf("-state=%s", stateDir+"/"+scenario+".tfstate"), "-auto-approve"}, configDir, scenario, timeout, randomID)
+// TerraformApply ...
+func TerraformApply(execDir, stateDir string, stateFileName string, timeout *time.Duration, randomID string) error {
+	return Run("terraform", []string{"apply", fmt.Sprintf("-state=%s", stateDir+pathSep+stateFileName+".tfstate"), "-auto-approve"}, execDir, timeout, randomID)
 }
 
-//TerraformPlan ...
-func TerraformPlan(configDir string, scenario string, timeout *time.Duration, randomID string) error {
-	return Run("terraform", []string{"plan"}, configDir, scenario, timeout, randomID)
+// TerraformPlan ...
+func TerraformPlan(execDir string, timeout *time.Duration, randomID string) error {
+	return Run("terraform", []string{"plan"}, execDir, timeout, randomID)
 }
 
-//TerraformDestroy ...
-func TerraformDestroy(configDir, stateDir string, scenario string, timeout *time.Duration, randomID string) error {
+// TerraformDestroy ...
+func TerraformDestroy(execDir, stateDir string, stateFileName string, timeout *time.Duration, randomID string) error {
 
-	return Run("terraform", []string{"destroy", "-force", fmt.Sprintf("-state=%s", stateDir+"/"+scenario+".tfstate")}, configDir, scenario, timeout, randomID)
+	return Run("terraform", []string{"destroy", "-force", fmt.Sprintf("-state=%s", stateDir+pathSep+stateFileName+".tfstate")}, execDir, timeout, randomID)
 }
 
-//TerraformShow ...
-func TerraformShow(configDir, stateDir string, scenario string, timeout *time.Duration, randomID string) error {
+// TerraformShow ...
+func TerraformShow(execDir, stateDir string, stateFileName string, timeout *time.Duration, randomID string) error {
 
-	return Run("terraform", []string{"show", fmt.Sprintf("%s", stateDir+"/"+scenario+".tfstate")}, configDir, scenario, timeout, randomID)
+	return Run("terraform", []string{"show", stateDir + pathSep + stateFileName + ".tfstate"}, execDir, timeout, randomID)
 }
 
-func Run(cmdName string, args []string, configDir string, scenario string, timeout *time.Duration, randomID string) error {
+func Run(cmdName string, args []string, execDir string, timeout *time.Duration, randomID string) error {
 	cmd := exec.Command(cmdName, args...)
 	if timeout != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 		cmd = exec.CommandContext(ctx, cmdName, args...)
 		defer cancel()
 	}
@@ -54,7 +55,7 @@ func Run(cmdName string, args []string, configDir string, scenario string, timeo
 	defer stdoutFile.Close()
 	defer stderrFile.Close()
 
-	cmd.Dir = configDir
+	cmd.Dir = execDir
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
@@ -84,7 +85,7 @@ func Run(cmdName string, args []string, configDir string, scenario string, timeo
 	}()
 
 	//Start the command
-	fmt.Println("Starting command", cmd.Path, cmd.Args)
+	log.Println("Starting command", cmd.Path, cmd.Args)
 	err = cmd.Start()
 	if err != nil {
 		return err
@@ -95,12 +96,12 @@ func Run(cmdName string, args []string, configDir string, scenario string, timeo
 	if err != nil {
 		return err
 	}
-	return nil
+	return err
 }
 
-func getLogFiles(logDir, scenario string) (stdoutFile, stderrFile *os.File, err error) {
-	stdoutPath := path.Join(logDir, scenario+".out")
-	stderrPath := path.Join(logDir, scenario+".err")
+func getLogFiles(logDir, fileName string) (stdoutFile, stderrFile *os.File, err error) {
+	stdoutPath := path.Join(logDir, fileName+".out")
+	stderrPath := path.Join(logDir, fileName+".err")
 
 	if _, err = os.Stat(stdoutPath); err == nil {
 		stdoutFile, err = os.OpenFile(stdoutPath, os.O_APPEND|os.O_WRONLY, 0600)
@@ -111,7 +112,7 @@ func getLogFiles(logDir, scenario string) (stdoutFile, stderrFile *os.File, err 
 		return
 	}
 
-	if _, err := os.Stat(stderrPath); err == nil {
+	if _, err = os.Stat(stderrPath); err == nil {
 		stderrFile, err = os.OpenFile(stderrPath, os.O_APPEND|os.O_WRONLY, 0600)
 	} else {
 		stderrFile, err = os.Create(stderrPath)

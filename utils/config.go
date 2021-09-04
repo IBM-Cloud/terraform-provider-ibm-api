@@ -91,3 +91,10 @@ func init() {
 	}
 
 }
+
+func SetGlobalDirs(current, logg, state, terraformerfWrapper string) {
+	currentDir = current
+	logDir = logg
+	stateDir = state
+	terraformerfWrapperDir = terraformerfWrapper
+}

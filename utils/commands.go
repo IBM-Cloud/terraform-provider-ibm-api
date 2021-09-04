@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"os/exec"
@@ -12,6 +13,7 @@ var stdouterr []byte
 
 //It will clone the git repo which contains the configuration file.
 func CloneRepo(msg ConfigRequest) ([]byte, string, error) {
+	var err error
 	gitURL := msg.GitURL
 	urlPath, err := url.Parse(msg.GitURL)
 	if err != nil {
@@ -20,9 +22,11 @@ func CloneRepo(msg ConfigRequest) ([]byte, string, error) {
 	baseName := filepath.Base(urlPath.Path)
 	extName := filepath.Ext(urlPath.Path)
 	p := baseName[:len(baseName)-len(extName)]
-	if _, err := os.Stat(currentDir + "/" + p); err == nil {
+	if _, err = os.Stat(currentDir + "/" + p); err == nil {
 		stdouterr, err = PullRepo(p)
-
+		if err != nil {
+			return nil, "", err
+		}
 	} else {
 		cmd := exec.Command("git", "clone", gitURL)
 		fmt.Println(cmd.Args)
@@ -33,7 +37,7 @@ func CloneRepo(msg ConfigRequest) ([]byte, string, error) {
 		}
 	}
 	path := currentDir + "/" + p + "/terraform.tfvars"
-	if _, err := os.Stat(path); os.IsNotExist(err) {
+	if _, err = os.Stat(path); os.IsNotExist(err) {
 		CreateFile(msg, path)
 	} else {
 		err = os.Remove(path)
@@ -88,8 +92,10 @@ func writeFile(path string, msg ConfigRequest) {
 
 	variables := msg.VariableStore
 
-	for _, v := range *variables {
-		_, err = file.WriteString(v.Name + " = \"" + v.Value + "\" \n")
+	if variables != nil {
+		for _, v := range *variables {
+			_, _ = file.WriteString(v.Name + " = \"" + v.Value + "\" \n")
+		}
 	}
 
 	// save changes
@@ -97,4 +103,47 @@ func writeFile(path string, msg ConfigRequest) {
 	if err != nil {
 		return
 	}
+}
+
+func RemoveDir(path string) (err error) {
+	contents, err := filepath.Glob(path)
+	if err != nil {
+		return
+	}
+	for _, item := range contents {
+		err = os.RemoveAll(item)
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
+func CreateDir(dirName string) error {
+	err := os.Mkdir(dirName, 0777)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Copy ..
+func Copy(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, in)
+	if err != nil {
+		return err
+	}
+	return out.Close()
 }

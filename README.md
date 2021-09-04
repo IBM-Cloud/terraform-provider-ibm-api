@@ -12,6 +12,29 @@ Use "Configuration Discovery" to import the existing Cloud resources (in your ac
 
 
 ## Steps to use the Configuration Discovery project
+## Files
+
+*   main.go
+
+    This file contains the web server and handlers.
+
+*   cmd/discovery
+
+    Code for the executable.
+
+## Steps to use the project as an executable
+
+*  Build and install the executable to your GOPATH
+
+       make install-cli
+
+*  Example commands
+
+       discovery config --git_url https://github.com/srikar-git/ibm-vsi --config_dir testi
+       discovery import --services ibm_is_vpc --config_dir testi --repo_name ibm-vsi
+
+
+## Steps to use the project as a server
 
 *  Start the server
 
@@ -22,6 +45,22 @@ Use "Configuration Discovery" to import the existing Cloud resources (in your ac
         http://localhost:8080
 
 ## How to run the Configuration Discovery as a docker container
+*  Or 
+
+       make run-mac <or make run-local for linux>
+
+*  Or run as docker container
+
+       make docker-build
+       make docker-run
+
+    First two need mongodb service running on localhost:27017. Third needs mongodb running as docker container. To run mongodb as docker container with 27017 exposed outside. This will work for all three methods above. Run this before any of the above steps
+        
+        make docker-run-mongo
+        
+
+
+## How to run the terraform-ibmcloud-provider-api as a container
         
         cd /go/src/github.com
         git clone git@github.ibm.com:IBMTerraform/configuration-discovery/.git
