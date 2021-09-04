@@ -266,7 +266,7 @@ func main() {
 				}
 
 				if err := createDirs(confDir, true); err != nil {
-					log.Println("Error in creating directory " + confDir)
+					log.Println("Error in creating directory "+confDir, err)
 					return err
 				}
 
@@ -279,13 +279,13 @@ func main() {
 				//Clean up discovery directory
 				discoveryDir, _ := utils.Filepathjoin(confDir, "discovery")
 				if err := os.MkdirAll(discoveryDir, os.ModePerm); err != nil {
-					log.Println("Error in creating directory " + discoveryDir)
+					log.Println("Error in creating directory "+discoveryDir, err)
 					return err
 				}
 
 				err := utils.RemoveDir(discoveryDir + pathSep + "*")
 				if err != nil {
-					log.Println("Error in cleaning up directory " + confDir)
+					log.Println("Error in cleaning up directory "+discoveryDir, err)
 					return err
 				}
 
@@ -387,7 +387,7 @@ func main() {
 func createDirs(confDir string, imp bool) (err error) {
 	defer func() {
 		if err != nil {
-			log.Println("ERRROR in creating directories")
+			log.Println("ERRROR in creating directories", err)
 		}
 	}()
 	if _, err = os.Stat(confDir); os.IsNotExist(err) {
@@ -396,25 +396,28 @@ func createDirs(confDir string, imp bool) (err error) {
 	}
 
 	if imp {
-		// logDir, _ := utils.Filepathjoin(confDir + "log")
+		// logDir, _ := utils.Filepathjoin(confDir, "log")
 		// if _, err = os.Stat(logDir); os.IsNotExist(err) {
 		// 	err = os.MkdirAll(logDir, os.ModePerm)
 		// 	if err != nil {
 		// 		return err
 		// 	}
 		// }
-		stateDir, _ := utils.Filepathjoin(confDir + "state")
+		stateDir, _ := utils.Filepathjoin(confDir, "state")
+		log.Println("stateDir", stateDir)
 		if _, err = os.Stat(stateDir); os.IsNotExist(err) {
 			err = os.MkdirAll(stateDir, os.ModePerm)
 			if err != nil {
+				log.Println("ERROR: ", err)
 				return err
 			}
 		}
 
-		tfWrapDir, _ := utils.Filepathjoin(confDir + "terraformer_wrapper")
+		tfWrapDir, _ := utils.Filepathjoin(confDir, "terraformer_wrapper")
 		if _, err := os.Stat(tfWrapDir); os.IsNotExist(err) {
 			err := os.MkdirAll(tfWrapDir, os.ModePerm)
 			if err != nil {
+				log.Println("ERROR: ", err)
 				return err
 			}
 		}

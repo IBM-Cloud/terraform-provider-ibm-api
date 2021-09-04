@@ -47,12 +47,16 @@ func InsertMongodb(s *mgo.Session, actionResponse ActionResponse) {
 }
 
 func Filepathjoin(dirPath string, pathElements ...string) (string, error) {
+	log.Println("p1", pathElements)
 	p := filepath.Join(append([]string{dirPath}, pathElements...)...)
+	log.Println("p2", p, pathElements)
 	p = filepath.FromSlash(p)
 
+	log.Println("p3", p)
+	log.Println("p4", p, dirPath)
 	if !strings.HasPrefix(p, dirPath) {
 		err := fmt.Errorf("path = %q, should be relative to %q", p, dirPath)
-		return "", err
+		return p, err
 	}
 	return p, nil
 }
