@@ -2,10 +2,11 @@ package discovery
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -16,18 +17,23 @@ import (
 
 // ReadTerraformerStateFile ..
 // TF 0.12 compatible
-func ReadTerraformerStateFile(terraformerStateFile string) ResourceList {
+func ReadTerraformerStateFile(ctx context.Context, terraformerStateFile string) ResourceList {
+
 	var rList ResourceList
 	tfData := TerraformSate{}
 
+	logger := utils.GetLogger(ctx)
+
 	tfFile, err := ioutil.ReadFile(terraformerStateFile)
 	if err != nil {
-		log.Fatal(err)
+		logger.Failed("Error: %v", err)
+		os.Exit(1)
 	}
 
 	err = json.Unmarshal([]byte(tfFile), &tfData)
 	if err != nil {
-		log.Fatal(err)
+		logger.Failed("Error: %v", err)
+		os.Exit(1)
 	}
 
 	for i := 0; i < len(tfData.Modules); i++ {
@@ -44,24 +50,26 @@ func ReadTerraformerStateFile(terraformerStateFile string) ResourceList {
 		}
 	}
 
-	log.Printf("Total (%d) resource in (%s).\n", len(rList), terraformerStateFile)
+	logger.Say("Total (%d) resource in (%s).\n", len(rList), terraformerStateFile)
 	return rList
 }
 
 // ReadTerraformStateFile ..
 // TF 0.13+ compatible
-func ReadTerraformStateFile(terraformStateFile, repoType string) map[string]interface{} {
+func ReadTerraformStateFile(ctx context.Context, terraformStateFile, repoType string) map[string]interface{} {
 	rIDs := make(map[string]interface{})
 	tfData := TerraformSate{}
+	logger := utils.GetLogger(ctx)
 
 	tfFile, err := ioutil.ReadFile(terraformStateFile)
 	if err != nil {
-		log.Fatal(err)
+		logger.Failed("Error: %v", err)
+
 	}
 
 	err = json.Unmarshal([]byte(tfFile), &tfData)
 	if err != nil {
-		log.Fatal(err)
+		logger.Failed("Error: %v", err)
 	}
 
 	for i := 0; i < len(tfData.Resources); i++ {
@@ -92,40 +100,41 @@ func ReadTerraformStateFile(terraformStateFile, repoType string) map[string]inte
 		}
 	}
 
-	log.Printf("Total (%d) resource in (%s).\n", len(rIDs), terraformStateFile)
+	logger.Say("Total (%d) resource in (%s).\n", len(rIDs), terraformStateFile)
 	return rIDs
 }
 
 // DiscoveryImport ..
-func DiscoveryImport(randomID, discoveryDir string, opts []string) error {
-	log.Printf("# let's import the resources (%s) 2/6:\n", opts[0])
+func DiscoveryImport(ctx context.Context, randomID, discoveryDir string, opts []string) error {
+	logger := utils.GetLogger(ctx)
+	logger.Say("# let's import the resources (%s) 2/6:\n", opts[0])
 
 	// Import the terraform resources & state files.
-	err := TerraformerImport(discoveryDir, opts, &planTimeOut, randomID)
+	err := TerraformerImport(discoveryDir, opts, planTimeOut, randomID)
 	if err != nil {
 		return err
 	}
 
-	log.Println("# Writing HCL Done!")
-	log.Println("# Writing TFState Done!")
+	logger.Say("# Writing HCL Done!")
+	logger.Say("# Writing TFState Done!")
 
 	//Check terraform version compatible
-	log.Println("# now, we can do some infra as code ! First, update the IBM Terraform provider to support TF 0.13 [3/6]:")
-	err = UpdateProviderFile(discoveryDir, randomID, &planTimeOut)
+	logger.Say("# now, we can do some infra as code ! First, update the IBM Terraform provider to support TF 0.13 [3/6]:")
+	err = UpdateProviderFile(ctx, discoveryDir, randomID, planTimeOut)
 	if err != nil {
 		return err
 	}
 
 	//Run terraform init commnd
-	log.Println("# we need to init our Terraform project [4/6]:")
-	err = utils.TerraformInit(discoveryDir, &planTimeOut, randomID)
+	logger.Say("# we need to init our Terraform project [4/6]:")
+	err = utils.TerraformInit(discoveryDir, planTimeOut, randomID)
 	if err != nil {
 		return err
 	}
 
 	//Run terraform refresh commnd on the generated state file
-	log.Println("# and finally compare what we imported with what we currently have [5/6]:")
-	err = TerraformRefresh(discoveryDir, &planTimeOut, randomID)
+	logger.Say("# and finally compare what we imported with what we currently have [5/6]:")
+	err = TerraformRefresh(discoveryDir, planTimeOut, randomID)
 	if err != nil {
 		return err
 	}
@@ -134,7 +143,8 @@ func DiscoveryImport(randomID, discoveryDir string, opts []string) error {
 }
 
 // UpdateProviderFile ..
-func UpdateProviderFile(discoveryDir, randomID string, timeout *time.Duration) error {
+func UpdateProviderFile(ctx context.Context, discoveryDir, randomID string, timeout time.Duration) error {
+
 	providerTF := discoveryDir + "/provider.tf"
 	input, err := ioutil.ReadFile(providerTF)
 	if err != nil {
@@ -155,7 +165,7 @@ func UpdateProviderFile(discoveryDir, randomID string, timeout *time.Duration) e
 	}
 
 	//Replace provider path in state file
-	err = TerraformReplaceProvider(discoveryDir, randomID, &planTimeOut)
+	err = TerraformReplaceProvider(discoveryDir, randomID, planTimeOut)
 	if err != nil {
 		return err
 	}
@@ -163,8 +173,10 @@ func UpdateProviderFile(discoveryDir, randomID string, timeout *time.Duration) e
 }
 
 // MergeStateFile ..
-func MergeStateFile(configRepoMap, discoveryRepoMap map[string]interface{}, src, dest, configDir, scenario, randomID string, timeout *time.Duration) error {
+func MergeStateFile(ctx context.Context, configRepoMap, discoveryRepoMap map[string]interface{}, src, dest, configDir, scenario, randomID string, timeout *time.Duration) error {
 	var AddResourceList []string
+
+	logger := utils.GetLogger(ctx)
 
 	//Read discovery state file
 	content, err := ioutil.ReadFile(src)
@@ -222,14 +234,14 @@ func MergeStateFile(configRepoMap, discoveryRepoMap map[string]interface{}, src,
 	//Move resource from discovery repo to config repo state file
 	if len(AddResourceList) > 0 {
 		for _, resource := range AddResourceList {
-			err = TerraformMoveResource(configDir, src, dest, resource, &planTimeOut, randomID)
+			err = TerraformMoveResource(configDir, src, dest, resource, planTimeOut, randomID)
 			if err != nil {
 				return err
 			}
 		}
-		log.Printf("\n\n# Discovery service successfuly moved (%v) resources from (%s) to (%s).", len(AddResourceList), src, dest)
+		logger.Say("\n\n# Discovery service successfuly moved (%v) resources from (%s) to (%s).", len(AddResourceList), src, dest)
 	} else {
-		log.Printf("\n\n# Discovery service didn't find any resource to move from (%s) to (%s).", src, dest)
+		logger.Say("\n\n# Discovery service didn't find any resource to move from (%s) to (%s).", src, dest)
 	}
 
 	return nil

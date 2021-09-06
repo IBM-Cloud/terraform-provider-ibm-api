@@ -4,6 +4,7 @@
 package discovery
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
@@ -162,6 +163,7 @@ func TerraformerImportHandler(s *mgo.Session) func(w http.ResponseWriter, r *htt
 				}
 			}
 		}()
+		opts = append(opts, "--compact")
 
 		b = make([]byte, 10)
 		rand.Read(b)
@@ -180,7 +182,7 @@ func TerraformerImportHandler(s *mgo.Session) func(w http.ResponseWriter, r *htt
 				if configName != "discovery" {
 					discoveryDir = utils.GetConfiguration().Server.MountDir + "/" + configName
 				}
-				err = DiscoveryImport(randomID, discoveryDir, opts)
+				err = DiscoveryImport(context.Background(), randomID, discoveryDir, opts)
 				if err != nil {
 					statusResponse.Error = err.Error()
 					statusResponse.Status = "Failed"
@@ -201,7 +203,7 @@ func TerraformerImportHandler(s *mgo.Session) func(w http.ResponseWriter, r *htt
 					return
 				}
 			} else if command == "merge" {
-				err = DiscoveryImport(randomID, discoveryDir, opts)
+				err = DiscoveryImport(context.Background(), randomID, discoveryDir, opts)
 				if err != nil {
 					statusResponse.Error = err.Error()
 					statusResponse.Status = "Failed"
@@ -226,18 +228,18 @@ func TerraformerImportHandler(s *mgo.Session) func(w http.ResponseWriter, r *htt
 
 				//Read state file from local repo directory
 				terraformStateFile := repoDir + "/terraform.tfstate"
-				terraformObj := ReadTerraformStateFile(terraformStateFile, "")
+				terraformObj := ReadTerraformStateFile(context.Background(), terraformStateFile, "")
 
 				//Read state file from discovery repo directory
 				terraformerSateFile := discoveryDir + "/terraform.tfstate"
-				terraformerObj := ReadTerraformStateFile(terraformerSateFile, "discovery")
+				terraformerObj := ReadTerraformStateFile(context.Background(), terraformerSateFile, "discovery")
 
 				// comparing state files
 				if cmp.Equal(terraformObj, terraformerObj, cmpopts.IgnoreFields(Resource{}, "ResourceName")) {
 					log.Printf("# Config repo configuration/state is equal !!\n")
 				} else {
 					log.Printf("# Config repo configuration/state is not equal !!\n")
-					err = MergeStateFile(terraformObj, terraformerObj, terraformerSateFile, terraformStateFile, repoDir, "", randomID, &planTimeOut)
+					err = MergeStateFile(context.Background(), terraformObj, terraformerObj, terraformerSateFile, terraformStateFile, repoDir, "", randomID, &planTimeOut)
 					if err != nil {
 						http.Error(w, err.Error(), 500)
 						return

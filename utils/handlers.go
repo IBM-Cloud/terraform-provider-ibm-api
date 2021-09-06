@@ -152,7 +152,7 @@ func ConfHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 		rand.Read(b)
 		randomID := fmt.Sprintf("%x", b)
 
-		err = TerraformInit(confDir, &planTimeOut, randomID)
+		err = TerraformInit(confDir, planTimeOut, randomID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -227,7 +227,7 @@ func PlanHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 
 		go func() {
 			PullRepo(repoName)
-			err := TerraformPlan(confDir+pathSep+repoName, &planTimeOut, randomID)
+			err := TerraformPlan(confDir+pathSep+repoName, planTimeOut, randomID)
 			if err != nil {
 				statusResponse.Error = err.Error()
 				statusResponse.Status = "Failed"
@@ -310,7 +310,7 @@ func ApplyHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 		go func() {
 
 			PullRepo(repoName)
-			err := TerraformApply(confDir, stateDir, repoName, &planTimeOut, randomID)
+			err := TerraformApply(confDir, stateDir, repoName, planTimeOut, randomID)
 			if err != nil {
 				statusResponse.Error = err.Error()
 				statusResponse.Status = "Failed"
@@ -385,7 +385,7 @@ func DestroyHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request)
 		errURL := "http://" + r.Host + "/" + r.URL.Path + "/" + randomID + ".err"
 		ResultToSlack(outURL, errURL, "destroy", randomID, "In-Progress", webhook)
 		go func() {
-			err := TerraformDestroy(confDir, stateDir, repoName, &planTimeOut, randomID)
+			err := TerraformDestroy(confDir, stateDir, repoName, planTimeOut, randomID)
 			if err != nil {
 				statusResponse.Error = err.Error()
 				statusResponse.Status = "Failed"
@@ -464,7 +464,7 @@ func ShowHandler(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 		errURL := "http://" + r.Host + "/" + r.URL.Path + "/" + randomID + ".err"
 		ResultToSlack(outURL, errURL, "show", randomID, "In-Progress", webhook)
 		go func() {
-			err := TerraformShow(confDir, stateDir, repoName, &planTimeOut, randomID)
+			err := TerraformShow(confDir, stateDir, repoName, planTimeOut, randomID)
 			if err != nil {
 				statusResponse.Error = err.Error()
 				statusResponse.Status = "Failed"

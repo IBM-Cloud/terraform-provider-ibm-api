@@ -1,14 +1,15 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"fmt"
 	"log"
 	"os"
-	"path"
 	"strings"
 	"time"
 
+	"github.com/IBM-Cloud/ibm-cloud-cli-sdk/bluemix/terminal"
 	"github.com/IBM-Cloud/terraform-provider-ibm-api/discovery"
 	"github.com/IBM-Cloud/terraform-provider-ibm-api/utils"
 	"github.com/google/go-cmp/cmp"
@@ -16,9 +17,35 @@ import (
 	"github.com/urfave/cli"
 )
 
-var planTimeOut = 60 * time.Minute
-var cliBuild = "0.1"
-var pathSep = string(os.PathSeparator)
+const (
+	releasesLink = "https://github.com/anilkumarnagaraj/terraform-provider-ibm-api/releases"
+)
+
+var (
+	ui          terminal.UI
+	planTimeOut = 60 * time.Minute
+	pathSep     = string(os.PathSeparator)
+	confDir     string
+	goctx       context.Context
+)
+
+func init() {
+	// Bluemix terminal UI
+	ui = terminal.NewStdUI()
+	terminal.InitColorSupport()
+
+	goctx = context.WithValue(context.Background(), utils.ContextKeyLogger, ui)
+
+	// todo: @srikar - read from env
+	confDir = os.Getenv("DISCOVERY_CONFIG_DIR")
+	if confDir == "" {
+		var err error
+		confDir, err = os.Getwd()
+		if err != nil {
+			ui.Failed("Couldn't get DISCOVERY_CONFIG_DIR %v", err)
+		}
+	}
+}
 
 // todo - can users set this directly
 // if msg.LOGLEVEL != "" {
@@ -27,15 +54,15 @@ var pathSep = string(os.PathSeparator)
 
 func main() {
 
-	// ui := terminal.NewStdUI()
 	app := cli.NewApp()
 	app.Name = "discovery"
 	app.HelpName = "IBM Cloud Discovery CLI"
 	app.Usage = "Lets you create state file and TF Config from Resources in your cloud account. " +
 		"For the green field and brown field imports of config and statefile, " +
 		"and all terraformer related"
-	// app.Writer = ui.Writer() // todo: @srikar - Is the log the write package to log.. find better
-	// app.ErrWriter = ui.Writer()
+	app.Writer = ui.Writer()
+	app.ErrWriter = ui.Writer()
+	app.Version = cliBuild
 
 	// we create our commands
 	app.Commands = []cli.Command{
@@ -47,73 +74,11 @@ func main() {
 				"discovery",
 				" version",
 			),
-			Action: func(ctx *cli.Context) error {
-				fmt.Println(cliBuild) // todo: @srikar - build proper version
-				return nil
-			},
+			Action: actForVersion,
 			OnUsageError: func(ctx *cli.Context, err error, isSub bool) error {
 				return cli.ShowCommandHelp(ctx, ctx.Args().First())
 			},
 		},
-		// {
-		// 	Category: "discovery",
-		// 	Name:     "dep",
-		// 	Aliases:  []string{"dependency, dependencies, download"},
-		// 	Usage: fmt.Sprint(
-		// 		"discovery",
-		// 		" dep",
-		// 		" [--terraformer_version terraformer_version]",
-		// 		" [--terraform_version terraform_version]",
-		// 		" [--path path]",
-		// 		" [--ibm_provider_version ibm_provider_version]",
-		// 	),
-		// 	Description: "Installs terraformer " +
-		// 		"and terraform and terraform provider if executables are not found. Version " +
-		// 		"matters only if binary is not already present",
-		// 	Flags: []cli.Flag{
-		// 		cli.StringFlag{
-		// 			Name:  "terraformer_version",
-		// 			Value: "latest",
-		// 			Usage: "If terraformer executable is not found, this version will be installed. Defaults to latest",
-		// 		},
-		// 		cli.StringFlag{
-		// 			Name:  "terraform_version",
-		// 			Value: "latest",
-		// 			Usage: "If terraform executable is not found, this version will be installed. Defaults to latest",
-		// 		},
-		// 		cli.StringFlag{
-		// 			Name:  "path",
-		// 			Usage: "Install the tf and tfr binaries here, if not given defaults to " + defaultPath,
-		// 		},
-		// 		cli.StringFlag{
-		// 			Name:  "ibm_provider_version",
-		// 			Value: "latest",
-		// 			Usage: "If provider is not found, this version will be installed. Defaults to latest" +
-		// 				"Installs at location as needed by terraform version",
-		// 		},
-		// 	},
-
-		// 	Action: func(c *cli.Context) error {
-
-		// 		tfrVersion := c.String("terraformer_version")
-		// 		tfVersion := c.String("terraform_version")
-		// 		ibmProviderVersion := c.String("terraform_version")
-		// 		installPath := c.String("path")
-
-		// 		err := downloadAndInitialize(tfrVersion, tfVersion, installPath, ibmProviderVersion)
-		// 		if err != nil {
-		// 			log.Println("ERROR: Couldn't check and download tf and tfer binaries")
-		// 			return err
-		// 		}
-
-		// 		//  // todo: @srikar - downloaded here, add these to your path
-		// 		return nil
-		// 	},
-		// 	OnUsageError: func(ctx *cli.Context, err error, isSub bool) error {
-		// 		log.Println("ERROR: " + err.Error())
-		// 		return cli.ShowCommandHelp(ctx, ctx.Command.Name)
-		// 	},
-		// },
 		{
 			Category: "discovery",
 			Name:     "config",
@@ -121,72 +86,102 @@ func main() {
 			Usage: fmt.Sprint(
 				"discovery",
 				" config",
-				" [--git_url GIT_URL]",
-				" [--config_dir CONFIG_DIR]",
+				// " [--git_url GIT_URL]",
+				" [--config_name CONFIG_NAME]",
 			),
-			Description: "Clone and create a local configuration in an empty repo and run terraform " +
-				"init. Clones in to a directory (printed with name repo_name) " +
-				"If git_url is not passed, terraformer and terraform will be " +
-				"installed and terraform init is done in the config_dir. " +
-				"Set TF_LOG like you set for terraform for debug logs in your env ",
+			// Description: "Clone and create a local configuration in an empty repo and run terraform " +
+			// 	"init. Clones in to a directory (printed with name repo_name) " +
+			// 	"If git_url is not passed, terraformer and terraform will be " +
+			// 	"installed and terraform init is done in the config_dir. " +
+			// 	"Set TF_LOG like you set for terraform for debug logs in your env ",
+			Description: "Create a local configuration directory for importing the terrraform configuration. " +
+				"config_dir is read from the env variable DISCOVERY_CONFIG_DIR. " +
+				" If not set, current folder will be config_dir",
 			Flags: []cli.Flag{
+				// cli.StringFlag{
+				// 	Name:  "git_url",
+				// 	Usage: "The git url to get the configuration from. If empty, config_dir should have tf files.",
+				// },
 				cli.StringFlag{
-					Name:  "git_url",
-					Usage: "The git url to get the configuration from. If empty, config_dir should have tf files.",
-				},
-				cli.StringFlag{
-					Name: "config_dir",
-					Usage: "If git_url is passed, Must be an empty existing folder. A folder to operate in. " +
-						"If git_url is not passed, this folder should have tf files already. In this case, " +
-						"empty means current folder. Can be used to download terraformer and terraform.",
-					Value: "." + pathSep,
+					Name: "config_name",
+					// Usage: "If git_url is passed, Must be an empty existing folder. A folder to operate in. " +
+					// 	"If git_url is not passed, this folder should have tf files already. In this case, " +
+					// 	"empty means current folder. Can be used to download terraformer and terraform.",
+					Usage: "Name of the folder in config_dir, to which to download the terraform configuration. ",
+					Value: "",
 				},
 			},
 
 			Action: func(c *cli.Context) error {
 
 				gitURL := c.String("git_url")
-				confDir := c.String("config_dir")
+				configName := c.String("config_name")
 
-				log.Println("git_url", gitURL)
-				log.Println("config dir", confDir)
+				ui.Say("config dir: %s", confDir)
+				if configName != "" {
+					ui.Say("config folder name: %s", configName)
+				}
+
+				if gitURL != "" { // todo: @srikar - remove these in brownfield
+					ui.Say("git url: %s", gitURL)
+					ui.Failed("git_url not supported yet. Can clone once brownfield is supported")
+				}
 
 				var repoName string
 				var err error
 				if gitURL == "" {
-					log.Println("EMPTY GIT URL: No git_url given, skipping to tf init")
+					// ui.Say("EMPTY GIT URL: No git_url given, skipping to tf init")
 				} else {
 
-					if err := createDirs(confDir, false); err != nil {
-						return err
-					}
-					log.Println("Will clone git repo", gitURL)
+					ui.Say("Will clone git repo", gitURL)
 
 					_, repoName, err = utils.CloneRepo(utils.ConfigRequest{
 						GitURL: gitURL,
 					})
 					if err != nil {
-						log.Println("Eror Cloning repo..")
-						log.Printf("err : %v\n", err)
+						ui.Failed("Eror Cloning repo..err : %v\n", err)
 						return err
 					}
-					log.Println("\n config name: ", repoName)
+					ui.Say("\n config name: ", repoName)
 				}
 
-				b := make([]byte, 10)
-				rand.Read(b)
-				randomID := fmt.Sprintf("%x", b)
-
-				//  // todo: @srikar - repoName passed as scenario
-				err = utils.TerraformInit(path.Join(confDir, repoName), &planTimeOut, randomID)
-				if err != nil {
-					log.Println("TF INIT ERROR:", err.Error())
-					return err
+				if configName == "" {
+					b := make([]byte, 10)
+					rand.Read(b)
+					randomID := fmt.Sprintf("%x", b)
+					configName = "discovery" + randomID // todo: @srikar - change to time based
 				}
+
+				configRepoFolder, _ := utils.Filepathjoin(confDir, configName)
+
+				if _, err := os.Stat(configRepoFolder); os.IsNotExist(err) {
+					ui.Say("\ncreating configRepoFolder %s", configRepoFolder)
+					err = os.MkdirAll(configRepoFolder, os.ModePerm)
+					if err != nil {
+						ui.Failed("Couldn't create %s, error: %v", err)
+						return err
+					}
+				} else {
+					isEmpty, err := utils.IsFolderEmpty(configRepoFolder)
+					if err != nil {
+						ui.Warn("Couldn't open dir %s, err: %v", configRepoFolder, err)
+					}
+					if !isEmpty {
+						ui.Failed("Folder %s should be empty", configRepoFolder)
+						return fmt.Errorf("config_name folder should be empty")
+					}
+					// ui.Say("\nRunning terraform init in %s", configRepoFolder)
+					// err = utils.TerraformInit(configRepoFolder, &planTimeOut, "")
+					// if err != nil {
+					// 	ui.Failed("TF INIT ERROR: %v", err)
+					// 	return err
+					// }
+				}
+				ui.Ok()
 				return nil
 			},
 			OnUsageError: func(ctx *cli.Context, err error, isSub bool) error {
-				log.Println("ERROR: " + err.Error())
+				ui.Failed("ERROR: " + err.Error())
 				return cli.ShowCommandHelp(ctx, ctx.Command.Name)
 			},
 		},
@@ -197,54 +192,88 @@ func main() {
 				"discovery",
 				" import",
 				" --services SERVICES_TO_IMPORT", // ibm_is_instance
-				" --command COMMAND",
 				" [--tags TAGS]",
-				" [--config_dir CONFIG_DIR]",
-				" [--repo_name REPO_NAME]",
+				" [--config_name CONFIG_NAME]",
+				" [--compact]",
+				// " [--merge]",
 			),
 			Description: "Import TF config for resources in your ibm cloud account. " +
 				"Import all the resources for this service. Imports config and statefile. " +
 				"If a statefile is already present, merging will be done. ",
 			Flags: []cli.Flag{
 				cli.StringFlag{
-					Name:  "services",
-					Usage: "The IBM service(s) to import the resources from. Comma separated",
+					Name: "services",
+					Usage: "The IBM service(s) to import the resources from. Comma separated. " +
+						"'discovery version' to see all available services",
 				},
 				cli.StringFlag{
-					Name:  "config_dir",
-					Usage: "Empty means current folder.",
-					Value: "." + pathSep,
-				},
-				cli.StringFlag{
-					Name: "repo_name",
-					Usage: "Folder inside config_dir, your config dir, where config was generated " +
-						"repo_name outputted in config command if you've cloned. Leave empty if " +
-						"configured a local directory.",
-					Value: "discovery",
-				},
-				cli.StringFlag{
-					Name: "command",
-					Usage: "Green field or brown field. Use 'merge' for brown and 'default' for green. " +
-						"Defaults to 'default'",
-					Value: "default",
+					Name: "config_name",
+					Usage: "Folder inside config_dir, where to import the config. " +
+						"A folder with prefix discovery is created inside the config_dir, if not given. ",
+					// + If this folder has some tf config already, merge flag has to be given. Imported
+					// tf config will be merge to existing config then.,
+					Value: "",
 				},
 				cli.StringFlag{
 					Name:  "tags",
 					Usage: "Tags in the format a:b,c:d",
 				},
+				cli.BoolFlag{
+					Name: "compact",
+					Usage: "Use --compact to generate all the terraform code into one single file. " +
+						"If not passed, a file is created for each resource",
+				},
+				// cli.BoolFlag{
+				// 	Name: "merge",
+				// 	Usage: "Use --merge to import and merge with config/statefile in folder config_name ",
+				// },
 			},
 
 			Action: func(c *cli.Context) error {
 
 				if !c.IsSet("services") {
+					ui.Failed("services flag not set")
 					return fmt.Errorf("services flag not set")
 				}
 
-				confDir := c.String("config_dir")
 				services := c.String("services")
-				repoName := c.String("repo_name")
-				command := c.String("command")
+				configName := c.String("config_name")
+				isCompact := c.Bool("compact")
+				isBrownField := c.Bool("merge")
 				tags := c.String("tags")
+
+				ui.Say("config_directory is %s", confDir)
+
+				if key := os.Getenv("IC_API_KEY"); key == "" {
+					ui.Warn("IC_API_KEY not exported")
+				}
+
+				b := make([]byte, 10)
+				rand.Read(b)
+				randomID := fmt.Sprintf("%x", b) // todo: @srikar - change to time based
+
+				if configName == "" {
+					configName = "discovery" + randomID
+				}
+
+				discoveryDir, _ := utils.Filepathjoin(confDir, configName)
+				if _, err := os.Stat(discoveryDir); os.IsNotExist(err) {
+					ui.Say("\ncreating Folder %s for generating config", discoveryDir)
+					err = os.MkdirAll(discoveryDir, os.ModePerm)
+					if err != nil {
+						ui.Failed("Couldn't create %s, error: %v", err)
+						return err
+					}
+				} else {
+					isEmpty, err := utils.IsFolderEmpty(discoveryDir)
+					if err != nil {
+						ui.Warn("Couldn't open dir %s, err: %v", discoveryDir, err)
+					}
+					if !isEmpty {
+						ui.Failed("Folder %s should be empty", discoveryDir)
+						return fmt.Errorf("config_name folder should be empty")
+					}
+				}
 
 				opts := []string{}
 
@@ -252,9 +281,9 @@ func main() {
 					opts = append(opts, "--resources="+services)
 				}
 				if tags != "" {
-					log.Println(tags)
+					ui.Say("Tags provided: %s", tags)
 					splittedTags := strings.Split(tags, ",")
-					log.Println(splittedTags)
+					ui.Say("Split tags: %v ", splittedTags)
 					if len(splittedTags) > 0 {
 						for _, v := range splittedTags {
 							tag := strings.SplitN(v, ":", 2)
@@ -266,113 +295,88 @@ func main() {
 					}
 				}
 
-				if err := createDirs(confDir, true); err != nil {
-					log.Println("Error in creating directory "+confDir, err)
-					return err
+				if isCompact {
+					opts = append(opts, "--compact")
 				}
 
-				b := make([]byte, 10)
-				rand.Read(b)
-				randomID := fmt.Sprintf("%x", b)
-
-				log.Println("Backend random id created: Intermediate state here", randomID)
-
-				//Clean up discovery directory
-				discoveryDir, _ := utils.Filepathjoin(confDir, "discovery")
-				if err := os.MkdirAll(discoveryDir, os.ModePerm); err != nil {
-					log.Println("Error in creating directory "+discoveryDir, err)
-					return err
-				}
-
-				err := utils.RemoveDir(discoveryDir + pathSep + "*")
-				if err != nil {
-					log.Println("Error in cleaning up directory "+discoveryDir, err)
-					return err
-				}
-
-				log.Println("Importing resources from ibm cloud")
-				if command == "default" {
-					if repoName != "discovery" {
-						discoveryDir, _ = utils.Filepathjoin(confDir, repoName)
-					}
-
-					err = discovery.DiscoveryImport(randomID, discoveryDir, opts)
+				ui.Say("Importing resources from ibm cloud")
+				if !isBrownField {
+					err := discovery.DiscoveryImport(goctx, "", discoveryDir, opts)
 					if err != nil {
-						log.Println("Error in Importing resources ", err)
+						ui.Failed("Error in Importing resources: %v", err)
 						return err
 					}
-				} else if command == "merge" {
-
+				} else {
 					// Import the terraform resources & state files.
-					// err := utils.TerraformerImport(confDir, services, repoName, &planTimeOut, randomID)
-					err = discovery.DiscoveryImport(randomID, discoveryDir, opts)
+					err := discovery.DiscoveryImport(goctx, "", discoveryDir, opts)
 					if err != nil {
-						log.Println("Error with importing", err)
+						ui.Failed("Error with importing: %v", err)
 						return err
 					}
 
-					generatedPath, _ := utils.Filepathjoin(confDir, "generated", "ibm")
-					log.Println("Imported resources from ibm cloud at " + generatedPath)
+					generatedPath, _ := utils.Filepathjoin(discoveryDir, "generated", "ibm")
+					ui.Say("Imported resources from ibm cloud at " + generatedPath)
 					if _, err := os.Stat(generatedPath); os.IsNotExist(err) {
-						log.Println("Import not successful")
+						ui.Say("No configuration files!!!")
 						return nil
 					} else {
-						log.Printf("Import successful. Imported into %s\n", generatedPath)
+						ui.Say("Import successful. Imported into %s\n", generatedPath)
 					}
 
 					//Merge state files and templates in services
-					repoDir, _ := utils.Filepathjoin(confDir, repoName)
+					// repoDir, _ := utils.Filepathjoin(confDir, repoName)
+					repoDir := discoveryDir
 					//Backup repo TF file.
 					terraformStateFile := repoDir + pathSep + "terraform.tfstate"
 					err = utils.Copy(terraformStateFile, repoDir+pathSep+"terraform.tfstate_backup")
 					if err != nil {
-						log.Println("Error with copying file")
+						ui.Say("Error with copying file")
 						return err
 					}
 
 					if _, err := os.Stat(terraformStateFile); os.IsNotExist(err) {
-						log.Printf("No merging needed bcz statefile doesn't already exist at %s\n",
+						ui.Say("No merging needed bcz statefile doesn't already exist at %s\n",
 							terraformStateFile)
-						log.Println("Done. Exiting")
+						ui.Say("Done. Exiting")
+						ui.Ok()
 						return nil
 					}
 
-					terraformObj := discovery.ReadTerraformStateFile(terraformStateFile, "")
+					terraformObj := discovery.ReadTerraformStateFile(goctx, terraformStateFile, "")
 
 					//Read state file from discovery repo directory
 					// terraformerStateFile := confDir + "/generated" + "/ibm/" + srv + "/terraform.tfstate"
 					terraformerStateFile := discoveryDir + pathSep + "terraform.tfstate"
-					terraformerObj := discovery.ReadTerraformStateFile(terraformerStateFile, "discovery")
+					terraformerObj := discovery.ReadTerraformStateFile(goctx, terraformerStateFile, "discovery")
 
-					log.Printf("Comparing and merging statefiles local %s and remote %s\n",
+					ui.Say("Comparing and merging statefiles local %s and remote %s\n",
 						terraformStateFile, terraformerStateFile)
 					// comparing state files
 					if cmp.Equal(terraformObj, terraformerObj,
 						cmpopts.IgnoreFields(discovery.Resource{}, "ResourceName")) {
-						log.Println("# Config repo configuration/state is equal !!")
+						ui.Say("# Config repo configuration/state is equal !!")
 					} else {
-						log.Println("# Config repo configuration/state is not equal !!")
+						ui.Say("# Config repo configuration/state is not equal !!")
 						// utils.MergeStateFile(terraformObj, terraformerObj, terraformerStateFile,
 						// terraformStateFile,"", "", randomID, &planTimeOut)
-						err = discovery.MergeStateFile(terraformObj, terraformerObj, terraformerStateFile,
+						err = discovery.MergeStateFile(goctx, terraformObj, terraformerObj, terraformerStateFile,
 							terraformStateFile, confDir, "", randomID, &planTimeOut)
 						if err != nil {
-							log.Println("# Couldn't merge state files", err)
+							ui.Warn("# Couldn't merge state files", err)
 							return err
 						}
 					}
 
-					log.Println("Backend action: file state here finally", terraformStateFile)
-				} else {
-					log.Println("Bad command value passed. Please pass either 'default' or 'merge'")
+					ui.Say("Backend action: file state here finally", terraformStateFile)
 				}
 
-				log.Println("Successful import")
+				ui.Say("Successful import")
+				ui.Ok()
 
 				return nil
 			},
 			OnUsageError: func(ctx *cli.Context, err error, isSub bool) error {
-				log.Println("ERROR: " + err.Error())
+				ui.Failed("ERROR: " + err.Error())
 				return cli.ShowCommandHelp(ctx, ctx.Command.Name)
 			},
 		},
@@ -383,54 +387,4 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-}
-
-func createDirs(confDir string, imp bool) (err error) {
-	defer func() {
-		if err != nil {
-			log.Println("ERRROR in creating directories", err)
-		}
-	}()
-	if _, err = os.Stat(confDir); os.IsNotExist(err) {
-		log.Println("ERROR: Folder doesn't exist", confDir)
-		return err
-	}
-
-	if imp {
-		// logDir, _ := utils.Filepathjoin(confDir, "log")
-		// if _, err = os.Stat(logDir); os.IsNotExist(err) {
-		// 	err = os.MkdirAll(logDir, os.ModePerm)
-		// 	if err != nil {
-		// 		return err
-		// 	}
-		// }
-		stateDir, _ := utils.Filepathjoin(confDir, "state")
-		log.Println("stateDir", stateDir)
-		if _, err = os.Stat(stateDir); os.IsNotExist(err) {
-			err = os.MkdirAll(stateDir, os.ModePerm)
-			if err != nil {
-				log.Println("ERROR: ", err)
-				return err
-			}
-		}
-
-		tfWrapDir, _ := utils.Filepathjoin(confDir, "terraformer_wrapper")
-		if _, err := os.Stat(tfWrapDir); os.IsNotExist(err) {
-			err := os.MkdirAll(tfWrapDir, os.ModePerm)
-			if err != nil {
-				log.Println("ERROR: ", err)
-				return err
-			}
-		}
-
-		utils.SetGlobalDirs(
-			confDir,
-			"", // logDir,
-			stateDir,
-			tfWrapDir,
-		)
-	} else {
-		utils.SetGlobalDirs(confDir, "", "", "")
-	}
-	return nil
 }

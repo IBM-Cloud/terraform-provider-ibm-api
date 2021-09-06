@@ -22,7 +22,7 @@ func CloneRepo(msg ConfigRequest) ([]byte, string, error) {
 	baseName := filepath.Base(urlPath.Path)
 	extName := filepath.Ext(urlPath.Path)
 	p := baseName[:len(baseName)-len(extName)]
-	if _, err = os.Stat(currentDir + "/" + p); err == nil {
+	if _, err = os.Stat(currentDir + pathSep + p); err == nil {
 		stdouterr, err = PullRepo(p)
 		if err != nil {
 			return nil, "", err
@@ -36,7 +36,7 @@ func CloneRepo(msg ConfigRequest) ([]byte, string, error) {
 			return nil, "", err
 		}
 	}
-	path := currentDir + "/" + p + "/terraform.tfvars"
+	path := currentDir + pathSep + p + pathSep + "terraform.tfvars"
 	if _, err = os.Stat(path); os.IsNotExist(err) {
 		CreateFile(msg, path)
 	} else {
@@ -68,7 +68,7 @@ func CreateFile(msg ConfigRequest, path string) {
 func PullRepo(repoName string) ([]byte, error) {
 	cmd := exec.Command("git", "pull")
 	fmt.Println(cmd.Args)
-	cmd.Dir = currentDir + "/" + repoName
+	cmd.Dir = currentDir + pathSep + repoName
 	stdoutStderr, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, err

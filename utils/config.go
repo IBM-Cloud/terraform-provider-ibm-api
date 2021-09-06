@@ -79,9 +79,9 @@ func init() {
 		panic("MOUNT_DIR is not set. Please set MOUNT_DIR to continue")
 	}
 
-	logDir = currentDir + "/log/"
-	stateDir = currentDir + "/state"
-	terraformerfWrapperDir = currentDir + "/terraformer_wrapper"
+	logDir = currentDir + pathSep + "log"
+	stateDir = currentDir + pathSep + "state"
+	terraformerfWrapperDir = currentDir + pathSep + "terraformer_wrapper"
 
 	if _, err := os.Stat(logDir); os.IsNotExist(err) {
 		os.MkdirAll(logDir, os.ModePerm)
