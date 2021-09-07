@@ -122,7 +122,7 @@ func Run(ctx context.Context, cmdName string, args []string, execDir string, tim
 	}
 
 	// Start the command
-	ui.Say("Starting command", cmd.Path, cmd.Args)
+	ui.Say("Starting command %s %v", cmd.Path, cmd.Args)
 	err = cmd.Start()
 	if err != nil {
 		return err

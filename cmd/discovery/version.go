@@ -7,7 +7,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-var cliBuild = "0.0.1"
+var cliBuild = "0.1.1"
 
 type versionCheckInfo struct {
 	outdated bool

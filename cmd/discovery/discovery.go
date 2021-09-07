@@ -36,7 +36,6 @@ func init() {
 
 	goctx = context.WithValue(context.Background(), utils.ContextKeyLogger, ui)
 
-	// todo: @srikar - read from env
 	confDir = os.Getenv("DISCOVERY_CONFIG_DIR")
 	if confDir == "" {
 		var err error
