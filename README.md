@@ -2,17 +2,17 @@
 
 Use "Configuration Discovery" to import the existing Cloud resources (in your account) and its configuration settings - to auto-generate the terraform configuration file (.tf) and state file (.tfstate).  It makes it easy for you to adopt the Infrastructure-as-Code practices; it can reverse engineer the current IBM Cloud environment (that was provisioned using UI or CLI).  
 
-# Dependencies
+## Dependencies
 
--      [Terraform](https://www.terraform.io/downloads.html) 0.9.3+
--	[Terraformer](https://github.com/GoogleCloudPlatform/terraformer) 0.8.15+
--	[Go](https://golang.org/doc/install) 1.15+ (to build the provider plugin)
+-   [Terraform](https://www.terraform.io/downloads.html) 0.9.3+
+-   [Terraformer](https://github.com/GoogleCloudPlatform/terraformer) 0.8.15+
+-   [Go](https://golang.org/doc/install) 1.15+ (to build the provider plugin)
 -   [IBM Cloud Provider](https://github.com/IBM-Cloud/terraform-provider-ibm/)
 -   [Mongodb](https://docs.mongodb.com/manual/installation/) v4.4.5+
 
 
 ## Steps to use the Configuration Discovery project
-## Files
+### Files
 
 *   main.go
 
@@ -22,7 +22,7 @@ Use "Configuration Discovery" to import the existing Cloud resources (in your ac
 
     Code for the executable.
 
-## Steps to use the project as an executable
+### Steps to use the project as an executable
 
 *  Build and install the executable to your GOPATH
 
@@ -39,7 +39,7 @@ Use "Configuration Discovery" to import the existing Cloud resources (in your ac
        discovery import --services ibm_is_vpc --config_name testfolder --compact --merge
 
 
-## Steps to use the project as a server 
+### Steps to use the project as a server 
  <!-- todo: @anil - add the swagger api link here, may be later we can host the swagger github page if needed -->
 
 *  Start the server
@@ -54,7 +54,7 @@ Use "Configuration Discovery" to import the existing Cloud resources (in your ac
 
        make run-mac <or make run-local for linux>
 
-## How to run the Configuration Discovery as a docker container
+### How to run the Configuration Discovery as a docker container
 
 *  Or run as docker container
 
@@ -67,7 +67,7 @@ Use "Configuration Discovery" to import the existing Cloud resources (in your ac
         
 
 
-## How to run the terraform-ibmcloud-provider-api as a container
+### How to run the terraform-ibmcloud-provider-api as a container
         
         cd /go/src/github.com
         git clone git@github.ibm.com:IBMTerraform/configuration-discovery/.git
@@ -77,7 +77,7 @@ Use "Configuration Discovery" to import the existing Cloud resources (in your ac
         export API_IMAGE=configuration-discovery:latest
         docker-compose up --build -d
         
-## Contributing to Configuration Discovery
+### Contributing to Configuration Discovery
 
 Please have a look at the [CONTRIBUTING.md](./CONTRIBUTING.md) file for some guidance before
 submitting a pull request. Thank you for your help and interest!
@@ -115,7 +115,7 @@ Below commands help you to import your resources into terraform configuration. F
 Start using [discovery executable](cmd/discovery/tutorial.md)
 
 
-#### Report a Issue / Feature request
+## Report a Issue / Feature request
 
 -   Is something broken? Have a issue/bug to report? use the [Bug report](https://github.com/IBM-Cloud/configuration-discovery/issues/new?assignees=&labels=&template=bug_report.md&title=) link. But before raising a issue, please check the [issues list](https://github.com/IBM-Cloud/configuration-discovery/issues) to see if the issue is already raised by someone
 -   Do you have a new feature or enhancement you would like to see? use the [Feature request](https://github.com/IBM-Cloud/configuration-discovery/issues/new?assignees=&labels=&template=feature_request.md&title=) link.
