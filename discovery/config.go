@@ -262,7 +262,7 @@ func MergeStateFile(ctx context.Context, configRepoMap, discoveryRepoMap map[str
 		}
 
 		hclConf = append(hclConf, string(data)...)
-		terraformwrapper.PrintHcl(hclConf, configDir+"/main.tf")
+		terraformwrapper.PrintHcl(hclConf, configDir+utils.PathSep+"main.tf")
 		logger.Say("\n\n# Discovery service successfuly moved (%v) resources from (%s) to (%s).", len(addResourceList), src, dest)
 	} else {
 		logger.Say("\n\n# Discovery service didn't find any resource to move from (%s) to (%s).", src, dest)
