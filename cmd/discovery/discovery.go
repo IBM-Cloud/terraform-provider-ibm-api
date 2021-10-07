@@ -54,8 +54,8 @@ func init() {
 func main() {
 
 	app := cli.NewApp()
-	app.Name = "discovery"
-	app.HelpName = "IBM Cloud Discovery CLI"
+	app.Name = "IBM Cloud Discovery CLI"
+	app.HelpName = "discovery"
 	app.Usage = "Lets you create state file and TF Config from Resources in your cloud account. " +
 		"For the green field and brown field imports of config and statefile, " +
 		"and all terraformer related"
@@ -194,7 +194,7 @@ func main() {
 				" [--tags TAGS]",
 				" [--config_name CONFIG_NAME]",
 				" [--compact]",
-				// " [--merge]",
+				" [--merge]",
 			),
 			Description: "Import TF config for resources in your ibm cloud account. " +
 				"Import all the resources for this service. Imports config and statefile. " +
@@ -208,9 +208,9 @@ func main() {
 				cli.StringFlag{
 					Name: "config_name",
 					Usage: "Folder inside config_dir, where to import the config. " +
-						"A folder with prefix discovery is created inside the config_dir, if not given. ",
-					// + If this folder has some tf config already, merge flag has to be given. Imported
-					// tf config will be merge to existing config then.,
+						"A folder with prefix discovery is created inside the config_dir, if not given. " +
+						"If this folder has some tf config already, merge flag has to be given. Imported" +
+						"tf config will be merge to existing config then.",
 					Value: "",
 				},
 				cli.StringFlag{
@@ -222,10 +222,10 @@ func main() {
 					Usage: "Use --compact to generate all the terraform code into one single file. " +
 						"If not passed, a file is created for each resource",
 				},
-				// cli.BoolFlag{
-				// 	Name: "merge",
-				// 	Usage: "Use --merge to import and merge with config/statefile in folder config_name ",
-				// },
+				cli.BoolFlag{
+					Name:  "merge",
+					Usage: "Use --merge to import and merge with config/statefile in folder config_name ",
+				},
 			},
 
 			Action: func(c *cli.Context) error {
@@ -268,7 +268,7 @@ func main() {
 					if err != nil {
 						ui.Warn("Couldn't open dir %s, err: %v", discoveryDir, err)
 					}
-					if !isEmpty {
+					if !isEmpty && !isBrownField {
 						ui.Failed("Folder %s should be empty", discoveryDir)
 						return fmt.Errorf("config_name folder should be empty")
 					}
