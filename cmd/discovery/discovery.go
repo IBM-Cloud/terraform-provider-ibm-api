@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/IBM-Cloud/ibm-cloud-cli-sdk/bluemix/terminal"
 	"github.com/IBM-Cloud/terraform-provider-ibm-api/discovery"
+	"github.com/IBM-Cloud/terraform-provider-ibm-api/terraformwrapper"
 	"github.com/IBM-Cloud/terraform-provider-ibm-api/utils"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -24,7 +24,6 @@ const (
 var (
 	ui          terminal.UI
 	planTimeOut = 60 * time.Minute
-	pathSep     = string(os.PathSeparator)
 	confDir     string
 	goctx       context.Context
 )
@@ -134,7 +133,7 @@ func main() {
 
 					ui.Say("Will clone git repo", gitURL)
 
-					_, repoName, err = utils.CloneRepo(utils.ConfigRequest{
+					_, repoName, err = discovery.CloneRepo(discovery.ConfigRequest{
 						GitURL: gitURL,
 					})
 					if err != nil {
@@ -274,40 +273,41 @@ func main() {
 					}
 				}
 
-				opts := []string{}
+				// todo: @srikar - where is opts used
+				// opts := []string{}
 
-				if services != "" {
-					opts = append(opts, "--resources="+services)
-				}
-				if tags != "" {
-					ui.Say("Tags provided: %s", tags)
-					splittedTags := strings.Split(tags, ",")
-					ui.Say("Split tags: %v ", splittedTags)
-					if len(splittedTags) > 0 {
-						for _, v := range splittedTags {
-							tag := strings.SplitN(v, ":", 2)
-							if len(tag) == 2 {
-								opts = append(opts, fmt.Sprintf("--%s=%s",
-									strings.TrimSpace(strings.ToLower(tag[0])), tag[1]))
-							}
-						}
-					}
-				}
+				// if services != "" {
+				// 	opts = append(opts, "--resources="+services)
+				// }
+				// if tags != "" {
+				// 	ui.Say("Tags provided: %s", tags)
+				// 	splittedTags := strings.Split(tags, ",")
+				// 	ui.Say("Split tags: %v ", splittedTags)
+				// 	if len(splittedTags) > 0 {
+				// 		for _, v := range splittedTags {
+				// 			tag := strings.SplitN(v, ":", 2)
+				// 			if len(tag) == 2 {
+				// 				opts = append(opts, fmt.Sprintf("--%s=%s",
+				// 					strings.TrimSpace(strings.ToLower(tag[0])), tag[1]))
+				// 			}
+				// 		}
+				// 	}
+				// }
 
-				if isCompact {
-					opts = append(opts, "--compact")
-				}
+				// if isCompact {
+				// 	opts = append(opts, "--compact")
+				// }
 
 				ui.Say("Importing resources from ibm cloud")
 				if !isBrownField {
-					err := discovery.DiscoveryImport(goctx, "", discoveryDir, opts)
+					err := discovery.DiscoveryImport(goctx, services, tags, isCompact, "", discoveryDir)
 					if err != nil {
 						ui.Failed("Error in Importing resources: %v", err)
 						return err
 					}
 				} else {
 					// Import the terraform resources & state files.
-					err := discovery.DiscoveryImport(goctx, "", discoveryDir, opts)
+					err := discovery.DiscoveryImport(goctx, services, tags, isCompact, "", discoveryDir)
 					if err != nil {
 						ui.Failed("Error with importing: %v", err)
 						return err
@@ -326,8 +326,8 @@ func main() {
 					// repoDir, _ := utils.Filepathjoin(confDir, repoName)
 					repoDir := discoveryDir
 					//Backup repo TF file.
-					terraformStateFile := repoDir + pathSep + "terraform.tfstate"
-					err = utils.Copy(terraformStateFile, repoDir+pathSep+"terraform.tfstate_backup")
+					terraformStateFile := repoDir + utils.PathSep + "terraform.tfstate"
+					err = utils.Copy(terraformStateFile, repoDir+utils.PathSep+"terraform.tfstate_backup")
 					if err != nil {
 						ui.Say("Error with copying file")
 						return err
@@ -345,21 +345,21 @@ func main() {
 
 					//Read state file from discovery repo directory
 					// terraformerStateFile := confDir + "/generated" + "/ibm/" + srv + "/terraform.tfstate"
-					terraformerStateFile := discoveryDir + pathSep + "terraform.tfstate"
+					terraformerStateFile := discoveryDir + utils.PathSep + "terraform.tfstate"
 					terraformerObj := discovery.ReadTerraformStateFile(goctx, terraformerStateFile, "discovery")
 
 					ui.Say("Comparing and merging statefiles local %s and remote %s\n",
 						terraformStateFile, terraformerStateFile)
 					// comparing state files
 					if cmp.Equal(terraformObj, terraformerObj,
-						cmpopts.IgnoreFields(discovery.Resource{}, "ResourceName")) {
+						cmpopts.IgnoreFields(terraformwrapper.Resource{}, "ResourceName")) {
 						ui.Say("# Config repo configuration/state is equal !!")
 					} else {
 						ui.Say("# Config repo configuration/state is not equal !!")
 						// utils.MergeStateFile(terraformObj, terraformerObj, terraformerStateFile,
 						// terraformStateFile,"", "", randomID, &planTimeOut)
 						err = discovery.MergeStateFile(goctx, terraformObj, terraformerObj, terraformerStateFile,
-							terraformStateFile, confDir, "", randomID, &planTimeOut)
+							terraformStateFile, confDir, randomID, planTimeOut)
 						if err != nil {
 							ui.Warn("# Couldn't merge state files", err)
 							return err

@@ -1,7 +1,11 @@
 package discovery
 
+import (
+	"github.com/IBM-Cloud/terraform-provider-ibm-api/terraformwrapper"
+)
+
 // TerraformSate ..
-type TerraformSate struct {
+type TerraformState struct {
 	Resources []Resources `json:"resources"`
 	Modules   []Modules   `json:"modules"`
 }
@@ -22,17 +26,7 @@ type Instances struct {
 }
 
 // ResourceList ..
-type ResourceList []Resource
-
-// Resource ..
-type Resource struct {
-	ID            string
-	ResourceType  string
-	ResourceName  string
-	Attributes    map[string]interface{}
-	DependsOn     []string
-	ResourceIndex int
-}
+type ResourceList []terraformwrapper.Resource
 
 // Modules ..
 type Modules struct {

@@ -6,11 +6,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/IBM-Cloud/terraform-provider-ibm-api/terraformwrapper"
 	"github.com/IBM-Cloud/terraform-provider-ibm-api/utils"
 	"github.com/tidwall/sjson"
 )
@@ -18,9 +21,8 @@ import (
 // ReadTerraformerStateFile ..
 // TF 0.12 compatible
 func ReadTerraformerStateFile(ctx context.Context, terraformerStateFile string) ResourceList {
-
 	var rList ResourceList
-	tfData := TerraformSate{}
+	tfData := TerraformState{}
 
 	logger := utils.GetLogger(ctx)
 
@@ -37,7 +39,7 @@ func ReadTerraformerStateFile(ctx context.Context, terraformerStateFile string) 
 	}
 
 	for i := 0; i < len(tfData.Modules); i++ {
-		rData := Resource{}
+		rData := terraformwrapper.Resource{}
 		for k := range tfData.Modules[i].Resources {
 			rData.ResourceName = k
 			rData.ResourceType = tfData.Modules[i].Resources[k].ResourceType
@@ -58,22 +60,23 @@ func ReadTerraformerStateFile(ctx context.Context, terraformerStateFile string) 
 // TF 0.13+ compatible
 func ReadTerraformStateFile(ctx context.Context, terraformStateFile, repoType string) map[string]interface{} {
 	rIDs := make(map[string]interface{})
-	tfData := TerraformSate{}
+	tfData := TerraformState{}
 	logger := utils.GetLogger(ctx)
 
 	tfFile, err := ioutil.ReadFile(terraformStateFile)
 	if err != nil {
 		logger.Failed("Error: %v", err)
-
+		os.Exit(1)
 	}
 
 	err = json.Unmarshal([]byte(tfFile), &tfData)
 	if err != nil {
 		logger.Failed("Error: %v", err)
+		os.Exit(1)
 	}
 
 	for i := 0; i < len(tfData.Resources); i++ {
-		rData := Resource{}
+		rData := terraformwrapper.Resource{}
 		var key string
 		//Don't process the mode type with 'data' value
 		if tfData.Resources[i].Mode == "data" {
@@ -105,12 +108,13 @@ func ReadTerraformStateFile(ctx context.Context, terraformStateFile, repoType st
 }
 
 // DiscoveryImport ..
-func DiscoveryImport(ctx context.Context, randomID, discoveryDir string, opts []string) error {
+//  // todo: opts []string is needed to be taken as arg
+func DiscoveryImport(ctx context.Context, services, tags string, compact bool, randomID, discoveryDir string) error {
 	logger := utils.GetLogger(ctx)
-	logger.Say("# let's import the resources (%s) 2/6:\n", opts[0])
-
+	logger.Say("# let's import the resources (%s) 2/6:\n", services)
 	// Import the terraform resources & state files.
-	err := TerraformerImport(discoveryDir, opts, planTimeOut, randomID)
+
+	err := terraformwrapper.TerraformerImport(discoveryDir, services, tags, compact, planTimeOut, randomID)
 	if err != nil {
 		return err
 	}
@@ -127,14 +131,14 @@ func DiscoveryImport(ctx context.Context, randomID, discoveryDir string, opts []
 
 	//Run terraform init commnd
 	logger.Say("# we need to init our Terraform project [4/6]:")
-	err = utils.TerraformInit(discoveryDir, planTimeOut, randomID)
+	err = terraformwrapper.TerraformInit(discoveryDir, planTimeOut, randomID)
 	if err != nil {
 		return err
 	}
 
 	//Run terraform refresh commnd on the generated state file
 	logger.Say("# and finally compare what we imported with what we currently have [5/6]:")
-	err = TerraformRefresh(discoveryDir, planTimeOut, randomID)
+	err = terraformwrapper.TerraformRefresh(discoveryDir, planTimeOut, randomID)
 	if err != nil {
 		return err
 	}
@@ -144,7 +148,6 @@ func DiscoveryImport(ctx context.Context, randomID, discoveryDir string, opts []
 
 // UpdateProviderFile ..
 func UpdateProviderFile(ctx context.Context, discoveryDir, randomID string, timeout time.Duration) error {
-
 	providerTF := discoveryDir + "/provider.tf"
 	input, err := ioutil.ReadFile(providerTF)
 	if err != nil {
@@ -165,7 +168,7 @@ func UpdateProviderFile(ctx context.Context, discoveryDir, randomID string, time
 	}
 
 	//Replace provider path in state file
-	err = TerraformReplaceProvider(discoveryDir, randomID, planTimeOut)
+	err = terraformwrapper.TerraformReplaceProvider(discoveryDir, randomID, planTimeOut)
 	if err != nil {
 		return err
 	}
@@ -173,27 +176,38 @@ func UpdateProviderFile(ctx context.Context, discoveryDir, randomID string, time
 }
 
 // MergeStateFile ..
-func MergeStateFile(ctx context.Context, configRepoMap, discoveryRepoMap map[string]interface{}, src, dest, configDir, scenario, randomID string, timeout *time.Duration) error {
-	var AddResourceList []string
+func MergeStateFile(ctx context.Context, configRepoMap, discoveryRepoMap map[string]interface{}, src, dest, configDir, randomID string, timeout time.Duration) error {
 
 	logger := utils.GetLogger(ctx)
 
+	provider := terraformwrapper.NewIbmProvider()
+	providerWrapper, err := terraformwrapper.Import(provider, []string{})
+	if err != nil {
+		log.Fatalln("Could not create provider schema :", err)
+	}
+
+	var addResourceList []terraformwrapper.Resource
 	//Read discovery state file
-	content, err := ioutil.ReadFile(src)
+	terraformStateFileData, err := ioutil.ReadFile(src)
 	if err != nil {
 		return err
 	}
-	statefilecontent := string(content)
+	statefilecontent := string(terraformStateFileData)
+	hclConf := []byte("\n")
+
 	//Loop through each discovery repo resource with config repo resource
-	for _, dResource := range discoveryRepoMap {
+	for _, discoveryResource := range discoveryRepoMap {
 		//Discovery resource
-		discovery_resource := dResource.(Resource).ResourceType + "." + dResource.(Resource).ID
+		discovery_resource := discoveryResource.(terraformwrapper.Resource).ResourceType + "." + discoveryResource.(terraformwrapper.Resource).ID
 
 		//Check discovery resource exist in config repo.
 		//If resource not exist, Move the discovery resource to config repo
 		if configRepoMap[discovery_resource] == nil {
-			discovery_resource := dResource.(Resource).ResourceType + "." + dResource.(Resource).ResourceName
-			AddResourceList = append(AddResourceList, discovery_resource)
+			resource := discoveryResource.(terraformwrapper.Resource)
+			resource.ResourceName = discoveryResource.(terraformwrapper.Resource).ResourceName
+			resource.ResourceTypeAndName = discoveryResource.(terraformwrapper.Resource).ResourceType + "." + discoveryResource.(terraformwrapper.Resource).ResourceName
+			resource = RemoveComputedAttributes(resource, providerWrapper)
+			addResourceList = append(addResourceList, resource)
 		} else {
 			//Resource allready exist in config repo
 			continue
@@ -201,20 +215,20 @@ func MergeStateFile(ctx context.Context, configRepoMap, discoveryRepoMap map[str
 
 		//Check discovery resource has got depends_on attribute
 		//If depends_on attribute exist in discovery resource, Get the depends_on resource name from config repo & update in discovery state file.
-		if dResource.(Resource).DependsOn != nil {
+		if discoveryResource.(terraformwrapper.Resource).DependsOn != nil {
 			var dependsOn []string
 
-			for i, d := range dResource.(Resource).DependsOn {
-				configParentResource := discoveryRepoMap[d].(Resource).ResourceType + "." + discoveryRepoMap[d].(Resource).ID
+			for i, d := range discoveryResource.(terraformwrapper.Resource).DependsOn {
+				configParentResource := discoveryRepoMap[d].(terraformwrapper.Resource).ResourceType + "." + discoveryRepoMap[d].(terraformwrapper.Resource).ID
 
 				//Get parent resource from config repo
 				if configRepoMap[configParentResource] != nil {
 					//Get depends_on resource name from config repo to update in discovery state file
-					configParentResource = configRepoMap[configParentResource].(Resource).ResourceType + "." + configRepoMap[configParentResource].(Resource).ResourceName
+					configParentResource = configRepoMap[configParentResource].(terraformwrapper.Resource).ResourceType + "." + configRepoMap[configParentResource].(terraformwrapper.Resource).ResourceName
 					dependsOn = append(dependsOn, configParentResource)
 
 					//Update depends_on parameter in discovery state file content
-					statefilecontent, err = sjson.Set(statefilecontent, "resources."+strconv.Itoa(dResource.(Resource).ResourceIndex)+".instances.0.dependencies."+strconv.Itoa(i), configParentResource)
+					statefilecontent, err = sjson.Set(statefilecontent, "resources."+strconv.Itoa(discoveryResource.(terraformwrapper.Resource).ResourceIndex)+".instances.0.dependencies."+strconv.Itoa(i), configParentResource)
 					if err != nil {
 						return err
 					}
@@ -232,17 +246,56 @@ func MergeStateFile(ctx context.Context, configRepoMap, discoveryRepoMap map[str
 	}
 
 	//Move resource from discovery repo to config repo state file
-	if len(AddResourceList) > 0 {
-		for _, resource := range AddResourceList {
-			err = TerraformMoveResource(configDir, src, dest, resource, planTimeOut, randomID)
+	if len(addResourceList) > 0 {
+		for _, resource := range addResourceList {
+			err = terraformwrapper.TerraformMoveResource(configDir, src, dest, resource.ResourceTypeAndName, planTimeOut, randomID)
 			if err != nil {
 				return err
 			}
 		}
-		logger.Say("\n\n# Discovery service successfuly moved (%v) resources from (%s) to (%s).", len(AddResourceList), src, dest)
+
+		//Print HCL
+		providerData := map[string]interface{}{}
+		data, err := terraformwrapper.HclPrintResource(addResourceList, providerData, "hcl")
+		if err != nil {
+			logger.Say("Error in building resource ::", err)
+		}
+
+		hclConf = append(hclConf, string(data)...)
+		terraformwrapper.PrintHcl(hclConf, configDir+"/main.tf")
+		logger.Say("\n\n# Discovery service successfuly moved (%v) resources from (%s) to (%s).", len(addResourceList), src, dest)
 	} else {
 		logger.Say("\n\n# Discovery service didn't find any resource to move from (%s) to (%s).", src, dest)
 	}
 
 	return nil
+}
+
+func RemoveComputedAttributes(resource terraformwrapper.Resource, providerWrapper *terraformwrapper.ProviderWrapper) terraformwrapper.Resource {
+	//Get computed attributes
+	readOnlyAttributes := []string{}
+	obj := providerWrapper.GetSchema().ResourceTypes[resource.ResourceType]
+	readOnlyAttributes = append(readOnlyAttributes, "id")
+	for k, v := range obj.Block.Attributes {
+		if !v.Optional && !v.Required {
+			readOnlyAttributes = append(readOnlyAttributes, k)
+		}
+	}
+
+	//Remove computed attributes
+	for key, value := range resource.Attributes {
+		switch t := value.(type) {
+		case interface{}:
+			v := reflect.ValueOf(t)
+			if v.Kind() != reflect.Bool && (v.Len() == 0 || utils.Contains(readOnlyAttributes, key)) {
+				delete(resource.Attributes, key)
+			}
+		default:
+			if value == nil || utils.Contains(readOnlyAttributes, key) {
+				delete(resource.Attributes, key)
+			}
+		}
+	}
+
+	return resource
 }

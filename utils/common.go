@@ -7,49 +7,120 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type contextKey string
 
-var pathSep = string(os.PathSeparator)
+var PathSep = string(os.PathSeparator)
 
-//ResultToSlack will send result to slack
-func ResultToSlack(outURL, errURL, action, randomID, status, webhook string) {
+func CreateFiles(path string) {
+	// check if file exists
+	var _, err = os.Stat(path)
 
-	m := ComposeSlackMessage(outURL, errURL, action, randomID, status)
-	m.PostToSlack(webhook)
+	// create file if not exists
+	if os.IsNotExist(err) {
+		var file, err = os.Create(path)
+		if IsError(err) {
+			return
+		}
+		defer file.Close()
+	}
 
+	fmt.Println("File Created Successfully", path)
 }
 
-//UpdateMongodb updates the status of the action.
-func UpdateMongodb(s *mgo.Session, actionID string, status string) error {
-	session := s.Copy()
-	defer session.Close()
-	c := session.DB("action").C("actionDetails")
-	err := c.Update(bson.M{"actionid": actionID}, bson.M{"$set": bson.M{"status": status}})
+func createFiles(path string) {
+	// check if file exists
+	var _, err = os.Stat(path)
+
+	// create file if not exists
+	if os.IsNotExist(err) {
+		var file, err = os.Create(path)
+		if IsError(err) {
+			return
+		}
+		defer file.Close()
+	}
+
+	fmt.Println("File Created Successfully", path)
+}
+
+func removeRepo(path, repoName string) error {
+	removePath := filepath.Join(path, repoName)
+	err := os.RemoveAll(removePath)
+	return err
+}
+
+func DeleteFile(path string) {
+	// delete file
+	var err = os.Remove(path)
+	if IsError(err) {
+		return
+	}
+
+	log.Println("File Deleted")
+}
+
+func RemoveDir(path string) (err error) {
+	contents, err := filepath.Glob(path)
+	if err != nil {
+		return
+	}
+	for _, item := range contents {
+		err = os.RemoveAll(item)
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
+func CreateDir(dirName string) error {
+	err := os.Mkdir(dirName, 0777)
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
-//InsertMongodb updates the status of the action.
-func InsertMongodb(s *mgo.Session, actionResponse ActionResponse) {
-	session := s.Copy()
-	defer session.Close()
-	c := session.DB("action").C("actionDetails")
-	err := c.Insert(actionResponse)
+// Copy ..
+func Copy(src, dst string) error {
+	in, err := os.Open(src)
 	if err != nil {
-		if mgo.IsDup(err) {
-			return
-		}
-		log.Println("Failed insert action details : ", err)
-		return
+		return err
 	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, in)
+	if err != nil {
+		return err
+	}
+	return out.Close()
+}
+
+func IsError(err error) bool {
+	if err != nil {
+		log.Println(err.Error())
+	}
+
+	return (err != nil)
+}
+
+// contains checks if a string is present in a slice
+func Contains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+
+	return false
 }
 
 func Filepathjoin(dirPath string, pathElements ...string) (string, error) {
