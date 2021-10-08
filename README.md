@@ -1,155 +1,126 @@
-# terraform-ibm-provider-api
+# IBM Cloud Configuration Discovery
 
-It is used to perform terraform action on ibm cloud provider using REST API
+Use "Configuration Discovery" to import the existing Cloud resources (in your account) and its configuration settings - to auto-generate the terraform configuration file (.tf) and state file (.tfstate).  It makes it easy for you to adopt the Infrastructure-as-Code practices; it can reverse engineer the current IBM Cloud environment (that was provisioned using UI or CLI).  
 
-# Dependencies
+## Dependencies
 
--	[Terraform](https://www.terraform.io/downloads.html) 0.9.3+
--	[Go](https://golang.org/doc/install) 1.8 (to build the provider plugin)
+-   [Terraform](https://www.terraform.io/downloads.html) 0.9.3+
+-   [Terraformer](https://github.com/GoogleCloudPlatform/terraformer) 0.8.15+
+-   [Go](https://golang.org/doc/install) 1.15+ (to build the provider plugin)
 -   [IBM Cloud Provider](https://github.com/IBM-Cloud/terraform-provider-ibm/)
+-   [Mongodb](https://docs.mongodb.com/manual/installation/) v4.4.5+
 
 
-## Files
+## Steps to use the Configuration Discovery project
+### Files
 
 *   main.go
 
     This file contains the web server and handlers.
 
+*   cmd/discovery
 
-## Steps to use the project
+    Code for the executable.
+
+### Steps to use the project as an executable
+
+*  Build and install the executable to your GOPATH
+
+       make install-cli
+
+*  Export the required env vars 
+
+       IC_API_KEY: Your ibm cloud api key. Imports resources in that account, for which user has access.
+       DISCOVERY_CONFIG_DIR: Directory, where to generate and import the terraform code. discovery uses only this directory for any read/write op.
+
+*  Example commands
+
+       discovery config --config_name testfolder
+       discovery import --services ibm_is_vpc --config_name testfolder --compact --merge
+
+
+### Steps to use the project as a server 
+ <!-- todo: @anil - add the swagger api link here, may be later we can host the swagger github page if needed -->
 
 *  Start the server
 
-       export MOUNT_DIR=<dir to clone the repo>
-       go run main.go docs.go
+        cd /go/src/github.com
+        git clone git@github.ibm.com:IBMTerraform/configuration-discovery/.git
+        cd configuration-discovery/
+        go run main.go docs.go
+        http://localhost:8080
 
-## How to run the terraform-ibmcloud-provider-api as a container
+*  Or 
+
+       make run-mac <or make run-local for linux>
+
+### How to run the Configuration Discovery as a docker container
+
+*  Or run as docker container
+
+       make docker-build
+       make docker-run
+
+    First two need mongodb service running on localhost:27017. Third needs mongodb running as docker container. To run mongodb as docker container with 27017 exposed outside. This will work for all three methods above. Run this before any of the above steps
+        
+        make docker-run-mongo
+        
+
+
+### How to run the terraform-ibmcloud-provider-api as a container
         
         cd /go/src/github.com
-        git clone git@github.ibm.com:IBMTerraform/terraform-provider-ibm-api/.git
-        cd terraform-provider-ibm-api/
-        docker build -t terraform-provider-ibm-api .
+        git clone git@github.ibm.com:IBMTerraform/configuration-discovery/.git
+        cd configuration-discovery/
+        docker build -t configuration-discovery .
         docker images
-        export API_IMAGE=terraform-provider-ibm-api:latest
-        export MOUNT_DIR=<dir where repo will be cloned>
+        export API_IMAGE=configuration-discovery:latest
         docker-compose up --build -d
         
-*  Create the configuration <br />
-     
-        URL: http://<HOST>:9080/configuration
-        METHOD: POST 
-        HEADER: 
-          Content-Type: application/json
-          Accept: application/json
-        SAMPLE Payload for configuration:
-            {  
-                // Provide git url for your terraform configuration git repo.
-                "git_url":"https://github.com/sakshiag/speech-to-text-terraform",
+### Contributing to Configuration Discovery
 
-                // Provide the variable required to run the configuration.
-                "variablestore":[  
-                {  
-                    "name":"org",
-                    "value":"org_name"
-                },
-                {  
-                    "name":"space",
-                    "value":"space_name"
-                },
-                {       
-                    "name":"region",
-                    "value":"region"
-                },
-                {  
-                    "name":"datacenter",
-                    "value":"datcenter"
-                },
-                {  
-                    "name":"machine_type",
-                    "value":"machine_type"
-                },
-                {  
-                    "name":"isolation",
-                    "value":"public"
-                },
-                {  
-                    "name":"private_vlan_id",
-                    "value":"private_vlan_id"
-                },
-                {  
-                    "name":"public_vlan_id",
-                    "value":"<public_vlan_id>"
-                },
-                {  
-                    "name":"subnet_id",
-                    "value":"subent_id"
-                },
-                {  
-                    "name":"bluemix_api_key",
-                    "value":"bm_api_key"
-                }],
-                // To define the terraform log level It is optional
-                "log_level": "DEBUG"
-            }
+Please have a look at the [CONTRIBUTING.md](./CONTRIBUTING.md) file for some guidance before
+submitting a pull request. Thank you for your help and interest!
 
-        Response:
-            {
-                "id": <conig name is returned>
-            }
 
-* Perform the action (apply, plan and delete) <br />
+## Discovery executable
 
-        //config_id is the id returned from /configuration API.
-        //action can be PLAN,APPLY,DELETE and SHOW.
-        URL: http://<HOST>:9080/configuration/config_id/{action}
-        METHOD: POST
-        HEADER: 
-          Content-Type: application/json
-          Accept: application/json
-          SLACK_WEBHOOK_URL: <provide your slack webhook url.>
-        Response:
-            {
-                "id": <action_id is returned which is used to retrive the logs and status.>,
-            }
+### Install
 
-* Get the status of the action <br />
+Head over to the [releases page](https://github.com/anilkumarnagaraj/terraform-provider-ibm-api/releases) and download the latest release and place it under the path. For example,
 
-        //config_id is the id returned from /configuration API.
-        //action_id can be PLAN,APPLY,DELETE and SHOW.
-        URL: http://<HOST>:9080/configuration/config_id/{action}/{action_id}/status
-        METHOD: GET
-        HEADER: 
-          Content-Type: application/json
-          Accept: application/json
-        Response:
-            {
-                "status" : <status of the action>,
-                "error" : <error if any error occured.>
-            }
+```
+wget https://github.com/anilkumarnagaraj/terraform-provider-ibm-api/releases/download/v0.1.1/discovery_0.1.1_darwin_arm64.zip
+untar discovery_0.1.1_darwin_arm64.zip
+mv discovery <$GOPATH/bin or any other directory in path>
+```
 
-* Get the logs of the action <br />
+### Install using go
 
-        //config_id is the id returned from /configuration API.
-        //action_id can be PLAN,APPLY,DELETE and SHOW.
-        URL: http://<HOST>:9080/configuration/config_id/{action}/{action_id}/log
-        METHOD: GET
-        HEADER: 
-          Content-Type: application/json
-          Accept: application/json
-        Response:
-            {
-                "action" : "action_name",
-                "id" : "action_id",
-                "output" : "output logs",
-                "error" : "error logs"
-            }
+If you have go installed, run this command 
+<!-- Need to verify and update this. Add the -u flag to update -->
+```
+go install github.com/anilkumarnagaraj/terraform-provider-ibm-api/cmd/discovery
+```
+### Commands
 
-* Delete the configuration. <br />
+Below commands help you to import your resources into terraform configuration. For more detailed description, run `discovery help`. For help on a command, run `discovery help <command>`
 
-        //config_id is the id returned from /configuration API.
-        URL: http://<HOST>:9080/configuration/config_id
-        METHOD: DELETE
-        HEADER: 
-          Content-Type: application/json
-          Accept: application/json
-        Response: 200 OK
+| Command                           | Description                                                                                                                                                                                             |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| discovery version | IBM Cloud Discovery CLI version. Gives you other dependency information. Shows all supported importable resources                    |
+| discovery config                         | Create a local configuration directory for importing the terrraform configuration.    |
+| discovery import | Import TF config for resources in your ibm cloud account. Import all the resources for this service. Imports config and statefile. If a statefile is already present, merging will be done.        |
+
+Start using [discovery executable](cmd/discovery/tutorial.md)
+
+
+## Report a Issue / Feature request
+
+-   Is something broken? Have a issue/bug to report? use the [Bug report](https://github.com/IBM-Cloud/configuration-discovery/issues/new?assignees=&labels=&template=bug_report.md&title=) link. But before raising a issue, please check the [issues list](https://github.com/IBM-Cloud/configuration-discovery/issues) to see if the issue is already raised by someone
+-   Do you have a new feature or enhancement you would like to see? use the [Feature request](https://github.com/IBM-Cloud/configuration-discovery/issues/new?assignees=&labels=&template=feature_request.md&title=) link.
+
+## License
+
+The project is licensed under the [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0).
+A copy is also available in the LICENSE file in this repository.

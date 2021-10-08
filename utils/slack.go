@@ -23,6 +23,14 @@ type SlackMessage struct {
 	Attachments []Attachments `json:"attachments,omitempty"`
 }
 
+//ResultToSlack will send result to slack
+func ResultToSlack(outURL, errURL, action, randomID, status, webhook string) {
+
+	m := ComposeSlackMessage(outURL, errURL, action, randomID, status)
+	m.PostToSlack(webhook)
+
+}
+
 //ComposeSlackMessage  composes the mesage to slack
 func ComposeSlackMessage(outputURL, errorURL, action, id, actionStatus string) SlackMessage {
 	//SlackMessage encapsulatest the message to send to slack
@@ -46,7 +54,7 @@ func (m SlackMessage) PostToSlack(webhook string) {
 
 	log.Printf("message %s", slackIt)
 	if err != nil {
-		fmt.Printf("Error occured %v", err)
+		log.Printf("Error occured %v", err)
 		return
 	}
 	if webhook == "" {
@@ -55,11 +63,11 @@ func (m SlackMessage) PostToSlack(webhook string) {
 
 	resp, err := http.Post(webhook, "application/json", bytes.NewBuffer(slackIt))
 	if err != nil {
-		fmt.Printf("Error occured while invoking callback URL %s, Error is  %v", webhook, err)
+		log.Printf("Error occured while invoking callback URL %s, Error is  %v", webhook, err)
 		return
 	}
-	fmt.Printf("Posted successfully to %s\n", webhook)
-	fmt.Printf("Status code is %d\n", resp.StatusCode)
+	log.Printf("Posted successfully to %s\n", webhook)
+	log.Printf("Status code is %d\n", resp.StatusCode)
 	defer resp.Body.Close()
 
 }
